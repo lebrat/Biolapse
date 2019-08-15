@@ -3,16 +3,16 @@
 [![Build Status](https://travis-ci.org/lebrat/Biolapse.svg?branch=master)](https://travis-ci.org/lebrat/Biolapse)  [![DOI](https://zenodo.org/badge/202534809.svg)](https://zenodo.org/badge/latestdoi/202534809)
 
 
-Biolapse is an open source graphical user interface dedicated to segment and track biological objects. All the details about the implementation is detail in ...
+Biolapse is an open source graphical user interface dedicated to segment and track biological objects. All the details about the implementation are detailed in ...
 
 
 
 ## Getting Started
 
-This project is written in python 3 and make use of [TensorFlow](https://www.tensorflow.org/) for the segmenting task and [PyQtGraph](http://pyqtgraph.org/) and [PyQt5](https://pypi.org/project/PyQt5/) for the graphical interface.
+This project is written in python 3 and makes use of [TensorFlow](https://www.tensorflow.org/) for the segmenting task and [PyQtGraph](http://pyqtgraph.org/) and [PyQt5](https://pypi.org/project/PyQt5/) for the graphical interface.
 
 ### Installation
-To install this project and all its prerequisites simply type in your terminal :
+To install all the prerequisites simply type in your terminal :
 
 `pip install git+https://github.com/lebrat/Biolapse`
 
@@ -29,7 +29,7 @@ to launch the main interface open a terminal in the Biolapse's directory and typ
 
 ### Traning the neural networks
 
-The providing neural network can be retrained on **your** dataset using the command :
+The provided neural network can be retrained on **your** dataset using the command :
 
 `python train.py`
 
