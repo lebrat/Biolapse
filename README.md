@@ -1,6 +1,7 @@
 # ![ ](https://github.com/lebrat/Biolapse/blob/master/header.png "Biolapse")
 
-[![Build Status](https://travis-ci.org/lebrat/Biolapse.svg?branch=master)](https://travis-ci.org/lebrat/Biolapse)
+[![Build Status](https://travis-ci.org/lebrat/Biolapse.svg?branch=master)](https://travis-ci.org/lebrat/Biolapse)  [![DOI](https://zenodo.org/badge/202534809.svg)](https://zenodo.org/badge/latestdoi/202534809)
+
 
 Biolapse is an open source graphical user interface dedicated to segment and track biological objects. All the details about the implementation is detail in ...
 
