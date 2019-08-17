@@ -14,6 +14,13 @@ import shutil
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QSizePolicy, QSlider, QSpacerItem, \
 	QVBoxLayout, QWidget, QFileDialog, QPushButton
 
+from tracking import extractMaskFromPoint
+
+# TODO:
+# - En shooting procedure, quand on touche à la partie droite de l'histogramme, erreur car ne prend en compte que des images
+# en niveau de gris. Il faudrait idealement empecher l'utilisateur de pouvoir bouger cela.
+
+
 """
 Graphical interface - allow experienced user to label cycle of cells. 
 
@@ -41,119 +48,6 @@ type_im = np.uint16 # Format wanted by the neural network.
 minimalSize = 70 # Minimal number of pixel to say a mask is valid.
 LSTM = False # Use a LSTM network.
 
-
-"""
-INPUT
-	- masks: time serie of masks associated to im. Type must be np.uint8.
-	- im: original time images. Type must be np.uint8.
-	- imageStart: number of the first image into which display the mask.
-	- pos: center of the cell which we want to compute the mask.
-	- finish: number of the last frame into which display the mask.
-	- progressbar:
-	- alpha (default = 0.25):
-OUTPUT
-	- Time serie images containing original image and border of the masks close to 'pos'.
-"""
-# TODO: utiliser un tracking plus fin (dilatations, etc..).
-def extractMaskFromPoint(masks,im,im_channel,imageStart,pos,finish,progressbar,alpha=.25):
-	if len(im_channel.shape)==1:
-		secondChannel = False
-	else:
-		secondChannel = True
-	barycenter = np.copy(pos)
-	nx_mask = masks.shape[1]
-	ny_mask = masks.shape[2]
-	barycenter[0] = nx_mask - barycenter[0]
-	DictBar = {} # contain barycenter and image index 
-	DictBar[imageStart] = barycenter.copy()
-	im_focus = {}
-	im_channel_focus = {}
-
-	# Detect border
-	im_out = np.repeat(np.expand_dims(im.copy(),3),3,3) # Need to turn into rgb image
-	binary = cv2.threshold(masks[imageStart], 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-	num,compo=cv2.connectedComponents(binary)
-	localCells = []
-	for chunckNo in range(1,num):
-		if len(np.where(compo==chunckNo)[0]) < minimalSize:
-			compo[np.where(compo==chunckNo)] = 0
-		else:
-			localCells += [[chunckNo,(np.where(compo==chunckNo)[0].mean(),np.where(compo==chunckNo)[1].mean()),len(np.where(compo==chunckNo)[0])]]
-
-	# Compute a cost function associated to each large enough mask and keep track of the minimum value
-	minCost = np.inf
-	indexMin = -1		
-	if len(localCells)==0:
-		print('No mask found.')
-	for ind,elmt in enumerate(localCells):
-		cost = np.linalg.norm(elmt[1] - barycenter)
-		if cost < minCost:
-			indexMin = ind
-			minCost = cost
-	maskFinal = np.zeros_like(masks[imageStart])
-	maskFinal[np.where(compo==localCells[indexMin][0])] = 1 
-	
-	# select image focus
-	delta = 2
-	r = np.where(maskFinal)
-	max_x = np.min((np.max(r[0])+delta,im.shape[1]))
-	max_y = np.min((np.max(r[1])+delta,im.shape[2]))
-	min_x = np.max((np.min(r[0])-delta,0))
-	min_y = np.max((np.min(r[1])-delta,0))
-	im_focus[imageStart] = im[imageStart,min_x:max_x,min_y:max_y]
-	if secondChannel:
-		im_channel_focus[imageStart] = im_channel[imageStart,min_x:max_x,min_y:max_y]
-
-	print(im.shape,im.max(),im.min())
-	# Draw contour
-	contours, hierarchy = cv2.findContours(maskFinal.astype(np.uint8),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-	im_out[imageStart] = cv2.drawContours(cv2.cvtColor(im[imageStart].astype(np.uint8),cv2.COLOR_GRAY2RGB), contours, -1, (255,0,0), 1)
-
-	# Do it for each time step
-	progressbar.setValue(imageStart)
-	while imageStart < finish :
-		imageStart += 1
-		barycenter = np.array(localCells[indexMin][1]) # restart from barycenter of previous mask.
-		DictBar[imageStart] = barycenter.copy()
-
-		# Compute cost fucntion
-		binary = cv2.threshold(masks[imageStart], 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-		num,compo=cv2.connectedComponents(binary)
-		localCells = []
-		for chunckNo in range(1,num):
-			if len(np.where(compo==chunckNo)[0]) < minimalSize:
-				compo[np.where(compo==chunckNo)] = 0
-			else:
-				localCells += [[chunckNo,(np.where(compo==chunckNo)[0].mean(),np.where(compo==chunckNo)[1].mean()),len(np.where(compo==chunckNo)[0])]]
-		minCost = np.inf
-		indexMin = -1
-		if len(localCells)==0:
-			print('No mask found.')
-			break
-		for ind,elmt in enumerate(localCells):
-			cost = np.linalg.norm(elmt[1] - barycenter)
-			if cost < minCost:
-				indexMin = ind
-				minCost = cost
-		maskFinal =np.zeros_like(masks[imageStart])
-		maskFinal[np.where(compo==localCells[indexMin][0])] = 1
-
-		# selct image focus
-		delta = 2
-		r = np.where(maskFinal)
-		max_x = np.min((np.max(r[0])+delta,im.shape[1]))
-		max_y = np.min((np.max(r[1])+delta,im.shape[2]))
-		min_x = np.max((np.min(r[0])-delta,0))
-		min_y = np.max((np.min(r[1])-delta,0))
-		im_focus[imageStart] = im[imageStart,min_x:max_x,min_y:max_y]
-		if secondChannel:
-			im_channel_focus[imageStart] = im_channel[imageStart,min_x:max_x,min_y:max_y]
-		
-		# Draw contour
-		contours, hierarchy = cv2.findContours(maskFinal.astype(np.uint8),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-		im_out[imageStart] = cv2.drawContours(cv2.cvtColor(im[imageStart].astype(np.uint8),cv2.COLOR_GRAY2RGB), contours, -1, (255,0,0), 1)
-		progressbar.setValue(imageStart)
-	return im_out.astype(np.uint8), DictBar, im_focus, im_channel_focus
 
 
 """
@@ -289,10 +183,13 @@ Implement buttons to manage interface.
 The buttons made are:
 	- Quit: quit the application.
 	- Channel: load other image (other chanel), and save croped images in all channels.
+	- start and end tracking: start and end save crop of selected mask.
 """
 class InterfaceManagerButton(QWidget):
 	isQuit  = pyqtSignal()
 	isChannel  = pyqtSignal()
+	isTrack = pyqtSignal()
+	isTrackEnd = pyqtSignal()
 	def __init__(self, parent=None):
 		super(InterfaceManagerButton, self).__init__(parent=parent)
 		self.verticalLayout = QVBoxLayout(self)
@@ -310,6 +207,16 @@ class InterfaceManagerButton(QWidget):
 		self.horizontalLayout.addItem(spacerItem)
 		self.verticalLayout.addLayout(self.horizontalLayout)
 		self.resize(self.sizeHint())
+
+		self.butTrack = QPushButton("Save crop")
+		self.butTrack.clicked.connect(self.trackImage)
+		self.horizontalLayout.addWidget(self.butTrack)
+
+		self.butTrackEnd = QPushButton("End save crop")
+		self.butTrackEnd.clicked.connect(self.trackEndImage)
+		self.horizontalLayout.addWidget(self.butTrackEnd)
+
+		
 	
 	## click actions emitting signals
 	def quitImage(self):
@@ -317,7 +224,13 @@ class InterfaceManagerButton(QWidget):
 		self.isQuit.emit()
 	def channelImage(self):
 		print("Adding new channel")
-		self.isChannel.emit()
+		self.isChannel.emit()	
+	def trackImage(self):
+		print("Start saving crop")
+		self.isTrack.emit()
+	def trackEndImage(self):
+		print("End saving crop")
+		self.isTrackEnd.emit()
 
 """
 Implement bottom buttons.
@@ -563,9 +476,9 @@ class Widget(QWidget):
 				middle[1] = tmp
 				self.progress.show()
 				if self.secondChannel:
-					self.im, self.currentBar, self.im_focus, self.im_channel_focus = extractMaskFromPoint(self.masks,self.im,self.im_channel,self.frameStart,middle,self.finish,self.progress,alpha=.25)
+					self.im, self.currentBar, self.im_focus, self.im_channel_focus = extractMaskFromPoint(self.masks,self.im,self.im_channel,self.frameStart,middle,self.finish,self.progress, minimalSize=minimalSize)
 				else:
-					self.im, self.currentBar, self.im_focus, _ = extractMaskFromPoint(self.masks,self.im,np.zeros(1),self.frameStart,middle,self.finish,self.progress,alpha=.25)
+					self.im, self.currentBar, self.im_focus, _ = extractMaskFromPoint(self.masks,self.im,np.zeros(1),self.frameStart,middle,self.finish,self.progress, minimalSize=minimalSize)
 				updateImage()
 			elif not(self.plot_mask):
 				print('Error: load or compute mask first.')
@@ -980,11 +893,33 @@ class Widget(QWidget):
 		self.roi.sigRegionChanged.connect(updatePlot)
 		updatePlot()
 
+		def trackingProcedure():
+			self.start_tracking = self.w1.x
+
+		def endTrackingProcedure():
+			if self.Shooted:
+				self.end_tracking = self.w1.x
+				if not os.path.exists(os.path.join(dir_file,'Outputs','track',str(self.shootID))):
+					os.makedirs(os.path.join(dir_file,'Outputs','track',str(self.shootID)))	
+				for k in range(self.start_tracking,self.end_tracking):
+					tmp = np.array(self.im_focus[k],dtype=np.float32)
+					tmp = np.array(255*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=np.uint8)
+					imageio.imsave(os.path.join(dir_file,'Outputs','track',str(self.shootID),'image_'+str(k).zfill(10)+'.png'),tmp)
+					if self.secondChannel:
+						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
+						tmp = np.array(255*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=np.uint8)
+						imageio.imsave(os.path.join(dir_file,'Outputs','track',str(self.shootID),'image2_'+str(k).zfill(10)+'.png'),tmp)
+			else:
+				print('Not in shooting mode.')
+
+
 
 		self.w3 = InterfaceManagerButton()
 		self.horizontalLayout.addWidget(self.w3)
 		self.w3.isQuit.connect(quitProcedure)
 		self.w3.isChannel.connect(newChannelProcedure)
+		self.w3.isTrack.connect(trackingProcedure)
+		self.w3.isTrackEnd.connect(endTrackingProcedure)
 
 # Interpret image data as row-major instead of col-major
 # pg.setConfigOptions(imageAxisOrder='row-major')

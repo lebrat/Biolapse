@@ -3,9 +3,9 @@
 [![Build Status](https://travis-ci.org/lebrat/Biolapse.svg?branch=master)](https://travis-ci.org/lebrat/Biolapse)  [![DOI](https://zenodo.org/badge/202534809.svg)](https://zenodo.org/badge/latestdoi/202534809)
 
 
-Biolapse is an open source graphical user interface dedicated to segment and track biological objects. All the details about the implementation are detailed in ...
+Biolapse is an open source graphical user interface dedicated to segment and track biological objects. All the details about the implementation are detailed in ... All experiments from this document can be reproduced using the two commands :
 
-
+`python script_train_XP_paper.py` and `python script_post_process_XP_paper.py`.
 
 ## Getting Started
 
@@ -27,17 +27,26 @@ to launch the main interface open a terminal in the Biolapse's directory and typ
 ### Tutorial video 
 [![Tutorial](https://img.youtube.com/vi/nomVideo/0.jpg)](https://www.youtube.com/watch?v=nomVideo)
 
-### Traning the neural networks
+### Traning the neural network
 
 The provided neural network can be retrained on **your** dataset using the command :
 
-`python train.py`
+`python script_train.py`
 
-- [ ] Describe how to add dataset.
+- Trainning data must be placed at segmentation/Data/png, with images at segmentation/Data/png/train_im and masks at segmentation/Data/png/train/mask.
+- Testing data must be placed at segmentation/Data/png, with images at segmentation/Data/png/test_im and masks at segmentation/Data/png/test/mask. 
+Images and masks must be in png format.
 
+### Evaluating the neural network
+
+The trained neural network can be evaluated on the test data set using the command :
+
+`python script_post_process.py`
+
+You can also directly apply the pretrained neural network by using the same command.
 
 ## Authors
-This software was developped by [Valentin Debarnot](https://scholar.google.fr/citations?user=gxBQ7d4AAAAJ&hl=fr) and [Léo Lebrat](lebrat.org) members of the [Toulouse institute of Mathematics](https://www.math.univ-toulouse.fr/?lang=en) France. It is based on an original idea by [Thomas Mangeat](https://scholar.google.com/citations?user=hPebN5AAAAAJ&hl=fr)
+This software was developped by [Valentin Debarnot](https://sites.google.com/view/debarnot/) and [Léo Lebrat](lebrat.org) members of the [Toulouse institute of Mathematics](https://www.math.univ-toulouse.fr/?lang=en) France. It is based on an original idea by [Thomas Mangeat](https://scholar.google.com/citations?user=hPebN5AAAAAJ&hl=fr).
 
 ## License
 
