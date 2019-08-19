@@ -4,6 +4,7 @@ from PyQt5.QtGui import QPalette
 from PyQt5.QtWidgets import QProgressBar
 import uuid
 import pyqtgraph as pg
+import pyqtgraph.graphicsItems as pgg
 from pyqtgraph.Qt import QtCore, QtGui
 import numpy as np
 import imageio
@@ -15,11 +16,6 @@ from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QSizePolicy, QSli
 	QVBoxLayout, QWidget, QFileDialog, QPushButton
 
 from tracking import extractMaskFromPoint
-
-# TODO:
-# - En shooting procedure, quand on touche à la partie droite de l'histogramme, erreur car ne prend en compte que des images
-# en niveau de gris. Il faudrait idealement empecher l'utilisateur de pouvoir bouger cela.
-
 
 """
 Graphical interface - allow experienced user to label cycle of cells. 
@@ -36,8 +32,6 @@ The saved files are:
 Authors: Valentin Debarnot, Léo Lebrat. 17/07/2019.
 """
 
-# TODO: save image in 16 bits if given in 16 bits.
-
 ## Uncomment to force not use GPU.
 # import os
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -45,6 +39,7 @@ Authors: Valentin Debarnot, Léo Lebrat. 17/07/2019.
 
 ratioKept = True # Keep ratio of the images display.
 type_im = np.uint16 # Format wanted by the neural network.
+type_save = np.uint8 # Format of the croped images
 minimalSize = 70 # Minimal number of pixel to say a mask is valid.
 LSTM = False # Use a LSTM network.
 
@@ -546,11 +541,12 @@ class Widget(QWidget):
 					os.makedirs(os.path.join(dir_file,'Outputs','zoom',str(self.shootID)))	
 				for k in range(self.prev_shoot,self.w1.x+1):
 					tmp = np.array(self.im_focus[k],dtype=np.float32)
-					tmp = np.array(255*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=np.uint8)
+					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
 					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-					tmp = np.array(255*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=np.uint8)
-					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
+					if self.secondChannel:
+						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
+						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+						imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
 				self.prev_shoot = self.w1.x
 			else:
 				print('Not in shooting mode.')
@@ -569,11 +565,12 @@ class Widget(QWidget):
 					os.makedirs(os.path.join(dir_file,'Outputs','zoom',str(self.shootID)))	
 				for k in range(self.prev_shoot+1,self.w1.x+1):
 					tmp = np.array(self.im_focus[k],dtype=np.float32)
-					tmp = np.array(255*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=np.uint8)
+					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
 					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-					tmp = np.array(255*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=np.uint8)
-					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
+					if self.secondChannel:
+						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
+						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+						imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
 				self.prev_shoot = self.w1.x
 			else:
 				print('Not in shooting mode.')
@@ -592,11 +589,12 @@ class Widget(QWidget):
 					os.makedirs(os.path.join(dir_file,'Outputs','zoom',str(self.shootID)))	
 				for k in range(self.prev_shoot+1,self.w1.x+1):
 					tmp = np.array(self.im_focus[k],dtype=np.float32)
-					tmp = np.array(255*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=np.uint8)
+					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
 					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-					tmp = np.array(255*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=np.uint8)
-					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
+					if self.secondChannel:
+						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
+						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+						imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
 				self.prev_shoot = self.w1.x
 			else:
 				print('Not in shooting mode.')
@@ -616,11 +614,12 @@ class Widget(QWidget):
 					os.makedirs(os.path.join(dir_file,'Outputs','zoom',str(self.shootID)))	
 				for k in range(self.prev_shoot+1,self.w1.x+1):
 					tmp = np.array(self.im_focus[k],dtype=np.float32)
-					tmp = np.array(255*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=np.uint8)
+					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
 					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-					tmp = np.array(255*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=np.uint8)
-					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
+					if self.secondChannel:
+						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
+						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+						imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
 				self.prev_shoot = self.w1.x
 			else:
 				print('Not in shooting mode.')
@@ -638,11 +637,12 @@ class Widget(QWidget):
 					os.makedirs(os.path.join(dir_file,'Outputs','zoom',str(self.shootID)))	
 				for k in range(self.prev_shoot+1,self.w1.x+1):
 					tmp = np.array(self.im_focus[k],dtype=np.float32)
-					tmp = np.array(255*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=np.uint8)
+					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
 					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-					tmp = np.array(255*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=np.uint8)
-					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
+					if self.secondChannel:
+						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
+						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+						imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
 				self.prev_shoot = self.w1.x
 			else:
 				print('Not in shooting mode.')
@@ -875,7 +875,7 @@ class Widget(QWidget):
 		self.roi.setZValue(10)  # make sure ROI is drawn above image
 
 		# Contrast/color control
-		hist = pg.HistogramLUTItem()
+		hist = pg.HistogramLUTItem(fillHistogram=False)
 		hist.setImageItem(self.img)
 		self.win.addItem(hist)
 		self.img.setImage(np.rot90(self.data,3))

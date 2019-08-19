@@ -95,7 +95,7 @@ TODO:
 # 			if not os.path.exists(path_png[:path_png.rfind('/')]):
 # 				os.makedirs(path_png[:path_png.rfind('/')])
 # 			for t in range(0,im.shape[0],sample_rate):
-# 				im_resize[t] = np.iinfo(type_im).max*(im[t]-np.min(im[t])+1e-15)/(np.max(im[t])-np.min(im[t])+1e-15)
+# 				im_resize[t] = x*(im[t]-np.min(im[t])+1e-15)/(np.max(im[t])-np.min(im[t])+1e-15)
 # 				imageio.imsave(path_png[:path_png.rfind('/')]+'/'+path_png[path_png.rfind('/')+1:][:path_png[path_png.rfind('/')+1:].rfind('.')]+str(t).zfill(7)+'.png',np.array(im_resize[t],dtype=type_im))
 # 		else:
 # 			if not os.path.exists(path_png):

@@ -107,10 +107,6 @@ for i in range(len(model_name_list)):
         acc = losses.accuracy(Y_test.flatten(), y_pred.flatten())
         score = dice_score/3+jaccard_score/3+acc/3
 
-        TP_prop = (Y_test.flatten()*y_pred.flatten())/len(y_pred.flatten())
-        print('Proportion TP {0}'.format(TP_prop))
-        print("Dice score: {0}. Jaccard score: {1}. Accuracy {2}.".format(dice_score,jaccard_score,acc))
-    
         if score > best_score:
             best_dice_score = dice_score
             best_jaccard_score = jaccard_score

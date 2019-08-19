@@ -20,4 +20,8 @@ setup(
 			'tensorflow>=1.14.0',
 			'tensorflow-estimator>=1.14.0',
 			'utils>=0.9.0',
-      ])
+    ],
+	extras_require = {
+	'tensorflow-gpu':  ["tensorflow-gpu"],
+	'keras-gpu':  ["keras-gpu"]
+    })

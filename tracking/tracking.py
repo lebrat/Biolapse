@@ -78,7 +78,8 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 	DictBar[crtImage] = barycenter.copy()
 	im_crop = {} # crop of masks
 	im_crop2 = {} # crop of masks is second channel of interest
-	im_out = np.repeat(np.expand_dims(im.copy(),3),3,3) # Need to turn into rgb image
+	# im_out = np.repeat(np.expand_dims(im.copy(),3),3,3) # Need to turn into rgb image, HistogramLUTItem doesn't support rgb
+	im_out = np.zeros_like(im)
 
 	localCells,compo = find_connected_components(masks[crtImage],minimalSize) # Detect connected components
 	indexMin = argmin_CF(localCells,barycenter) # Compute argmin CF
@@ -95,7 +96,8 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 	if secondChannel:
 		im_crop2[crtImage] = im_channel[crtImage,min_x:max_x,min_y:max_y]
 	
-	im_out[crtImage] = draw_border(maskFinal,im[crtImage].astype(np.uint8))
+	# im_out[crtImage] = draw_border(maskFinal,im[crtImage].astype(np.uint8)) # HistogramLUTItem doesn't support rgb
+	im_out[crtImage] = np.dot(draw_border(maskFinal,im[crtImage].astype(np.uint8)), [0.299, 0.587, 0.144])
 	# Repeat the operation for each time step
 	progressbar.setValue(crtImage)
 	while crtImage < finish :
@@ -119,7 +121,8 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 		if secondChannel:
 			im_crop2[crtImage] = im_channel[crtImage,min_x:max_x,min_y:max_y]
 
-		im_out[crtImage] = draw_border(maskFinal,im[crtImage].astype(np.uint8))
+		# im_out[crtImage] = draw_border(maskFinal,im[crtImage].astype(np.uint8)) # HistogramLUTItem doesn't support rgb
+		im_out[crtImage] = np.dot(draw_border(maskFinal,im[crtImage].astype(np.uint8)), [0.299, 0.587, 0.144])
 
 		progressbar.setValue(crtImage)
 	return im_out.astype(np.uint8), DictBar, im_crop, im_crop2
