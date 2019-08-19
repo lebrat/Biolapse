@@ -69,6 +69,7 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 		secondChannel = True
 	#Initialize the tracking and get paramters 
 	crtImage = imageStart
+	cpt_im = 0
 	maskFinal = np.zeros_like(masks[crtImage])
 	barycenter = np.copy(pos)
 	nx_mask = masks.shape[1]
@@ -80,6 +81,10 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 	im_crop2 = {} # crop of masks is second channel of interest
 	# im_out = np.repeat(np.expand_dims(im.copy(),3),3,3) # Need to turn into rgb image, HistogramLUTItem doesn't support rgb
 	im_out = np.zeros_like(im)
+	min_x = np.zeros(finish-imageStart+1)
+	max_x = np.zeros(finish-imageStart+1)
+	min_y = np.zeros(finish-imageStart+1)
+	max_y = np.zeros(finish-imageStart+1)
 
 	localCells,compo = find_connected_components(masks[crtImage],minimalSize) # Detect connected components
 	indexMin = argmin_CF(localCells,barycenter) # Compute argmin CF
@@ -88,20 +93,18 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 	# Select region of interest to save crops
 	delta = 2
 	r = np.where(maskFinal)
-	max_x = np.min((np.max(r[0])+delta,im.shape[1]))
-	max_y = np.min((np.max(r[1])+delta,im.shape[2]))
-	min_x = np.max((np.min(r[0])-delta,0))
-	min_y = np.max((np.min(r[1])-delta,0))
-	im_crop[crtImage] = im[crtImage,min_x:max_x,min_y:max_y]
-	if secondChannel:
-		im_crop2[crtImage] = im_channel[crtImage,min_x:max_x,min_y:max_y]
-	
+	max_x[cpt_im] = np.min((np.max(r[0])+delta,im.shape[1]))
+	max_y[cpt_im] = np.min((np.max(r[1])+delta,im.shape[2]))
+	min_x[cpt_im] = np.max((np.min(r[0])-delta,0))
+	min_y[cpt_im] = np.max((np.min(r[1])-delta,0))
+
 	# im_out[crtImage] = draw_border(maskFinal,im[crtImage].astype(np.uint8)) # HistogramLUTItem doesn't support rgb
 	im_out[crtImage] = np.dot(draw_border(maskFinal,im[crtImage].astype(np.uint8)), [0.299, 0.587, 0.144])
 	# Repeat the operation for each time step
 	progressbar.setValue(crtImage)
 	while crtImage < finish :
 		crtImage += 1
+		cpt_im += 1
 		barycenter = np.array(localCells[indexMin][1]) # restart from barycenter of previous mask.
 		DictBar[crtImage] = barycenter.copy()
 
@@ -113,16 +116,39 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 		# selct image focus
 		delta = 2
 		r = np.where(maskFinal)
-		max_x = np.min((np.max(r[0])+delta,im.shape[1]))
-		max_y = np.min((np.max(r[1])+delta,im.shape[2]))
-		min_x = np.max((np.min(r[0])-delta,0))
-		min_y = np.max((np.min(r[1])-delta,0))
-		im_crop[crtImage] = im[crtImage,min_x:max_x,min_y:max_y]
-		if secondChannel:
-			im_crop2[crtImage] = im_channel[crtImage,min_x:max_x,min_y:max_y]
+		max_x[cpt_im] = np.min((np.max(r[0])+delta,im.shape[1]))
+		max_y[cpt_im] = np.min((np.max(r[1])+delta,im.shape[2]))
+		min_x[cpt_im] = np.max((np.min(r[0])-delta,0))
+		min_y[cpt_im] = np.max((np.min(r[1])-delta,0))
 
 		# im_out[crtImage] = draw_border(maskFinal,im[crtImage].astype(np.uint8)) # HistogramLUTItem doesn't support rgb
 		im_out[crtImage] = np.dot(draw_border(maskFinal,im[crtImage].astype(np.uint8)), [0.299, 0.587, 0.144])
 
 		progressbar.setValue(crtImage)
+	cpt_im = 0
+	max_x_axis = np.max(max_x-min_x)
+	max_y_axis = np.max(max_y-min_y)
+	for crtImage in range(imageStart,finish+1):
+		add_x = max_x_axis - (max_x[cpt_im]-min_x[cpt_im])
+		add_y = max_y_axis - (max_y[cpt_im]-min_y[cpt_im])
+		x_l = min_x[cpt_im]-np.floor(add_x/2)
+		x_u = max_x[cpt_im]+np.ceil(add_x/2)
+		y_l = min_y[cpt_im]-np.floor(add_y/2)
+		y_u = max_y[cpt_im]+np.ceil(add_y/2)
+		if x_l < 0:
+			x_u -= x_l
+			x_l = 0
+		if y_l < 0:
+			y_u -= y_l
+			y_l = 0
+		if x_u >nx_mask-1:
+			x_l -= x_u - (nx_mask -1)
+			x_u = nx_mask-1
+		if y_u >ny_mask-1:
+			y_l -= y_u - (ny_mask -1)
+			y_u = ny_mask-1
+		im_crop[crtImage] = im[crtImage,x_l:x_u,y_l:y_u]
+		if secondChannel:
+			im_crop2[crtImage] = im_channel[crtImage,x_l:x_u,y_l:y_u]
+		cpt_im += 1
 	return im_out.astype(np.uint8), DictBar, im_crop, im_crop2
