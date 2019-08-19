@@ -50,9 +50,9 @@ lr = 1e-1
 momentum = 0.8
 decay = 1e-6
 steps_per_epoch = 15
-batch_size = 4
+batch_size = 2
 type_im = np.uint16
-nx = ny = 256
+nx = ny = 128
 TIME = 10
 
 path_train = 'Data/Train'

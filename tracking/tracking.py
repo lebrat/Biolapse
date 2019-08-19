@@ -131,10 +131,10 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 	for crtImage in range(imageStart,finish+1):
 		add_x = max_x_axis - (max_x[cpt_im]-min_x[cpt_im])
 		add_y = max_y_axis - (max_y[cpt_im]-min_y[cpt_im])
-		x_l = min_x[cpt_im]-np.floor(add_x/2)
-		x_u = max_x[cpt_im]+np.ceil(add_x/2)
-		y_l = min_y[cpt_im]-np.floor(add_y/2)
-		y_u = max_y[cpt_im]+np.ceil(add_y/2)
+		x_l = int(min_x[cpt_im]-np.floor(add_x/2))
+		x_u = int(max_x[cpt_im]+np.ceil(add_x/2))
+		y_l = int(min_y[cpt_im]-np.floor(add_y/2))
+		y_u = int(max_y[cpt_im]+np.ceil(add_y/2))
 		if x_l < 0:
 			x_u -= x_l
 			x_l = 0
@@ -147,6 +147,7 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 		if y_u >ny_mask-1:
 			y_l -= y_u - (ny_mask -1)
 			y_u = ny_mask-1
+		print(x_l,x_u,y_l,y_u)
 		im_crop[crtImage] = im[crtImage,x_l:x_u,y_l:y_u]
 		if secondChannel:
 			im_crop2[crtImage] = im_channel[crtImage,x_l:x_u,y_l:y_u]
