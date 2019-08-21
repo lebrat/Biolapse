@@ -363,7 +363,7 @@ class Widget(QWidget):
 			imgs = self.fold[0][0]
 			print("Warning: only one tiff can be process.")
 			tmp = np.array(imageio.mimread(imgs,memtest=False))
-			from scipy.misc import bytescale
+			# from scipy.misc import bytescale
 			tmp = bytescale(tmp)
 			self.im = np.squeeze(np.array(tmp,dtype=np.uint8))
 			self.im_nn = np.squeeze(np.array(tmp,dtype=type_im))
@@ -375,7 +375,7 @@ class Widget(QWidget):
 			pictList = self.fold[0]
 			path_fold = self.fold[0]
 			tmp = np.array(imageio.imread(pictList[0]))
-			from scipy.misc import bytescale
+			# from scipy.misc import bytescale
 			tmp = bytescale(tmp)
 			self.im = np.array(tmp,dtype=np.uint8)
 			self.im = np.zeros((len(pictList),self.im.shape[0],self.im.shape[1]))
@@ -471,9 +471,9 @@ class Widget(QWidget):
 				middle[1] = tmp
 				self.progress.show()
 				if self.secondChannel:
-					self.im, self.currentBar, self.im_focus, self.im_channel_focus = extractMaskFromPoint(self.masks,self.im,self.im_channel,self.frameStart,middle,self.finish,self.progress, minimalSize=minimalSize)
+					self.im, self.currentBar, self.im_focus, self.im_channel_focus = extractMaskFromPoint(self.masks,self.im,self.im_channel,0,middle,self.finish,self.progress, minimalSize=minimalSize)
 				else:
-					self.im, self.currentBar, self.im_focus, _ = extractMaskFromPoint(self.masks,self.im,np.zeros(1),self.frameStart,middle,self.finish,self.progress, minimalSize=minimalSize)
+					self.im, self.currentBar, self.im_focus, _ = extractMaskFromPoint(self.masks,self.im,np.zeros(1),0,middle,self.finish,self.progress, minimalSize=minimalSize)
 				updateImage()
 			elif not(self.plot_mask):
 				print('Error: load or compute mask first.')
@@ -920,6 +920,74 @@ class Widget(QWidget):
 		self.w3.isChannel.connect(newChannelProcedure)
 		self.w3.isTrack.connect(trackingProcedure)
 		self.w3.isTrackEnd.connect(endTrackingProcedure)
+
+
+
+
+# Returns a byte-scaled image
+def bytescale(data, cmin=None, cmax=None, high=255, low=0):
+    """
+    Byte scales an array (image).
+    Byte scaling means converting the input image to uint8 dtype and scaling
+    the range to ``(low, high)`` (default 0-255).
+    If the input image already has dtype uint8, no scaling is done.
+    Parameters
+    ----------
+    data : ndarray
+        PIL image data array.
+    cmin : scalar, optional
+        Bias scaling of small values. Default is ``data.min()``.
+    cmax : scalar, optional
+        Bias scaling of large values. Default is ``data.max()``.
+    high : scalar, optional
+        Scale max value to `high`.  Default is 255.
+    low : scalar, optional
+        Scale min value to `low`.  Default is 0.
+    Returns
+    -------
+    img_array : uint8 ndarray
+        The byte-scaled array.
+    Examples
+    --------
+    >>> from scipy.misc import bytescale
+    >>> img = np.array([[ 91.06794177,   3.39058326,  84.4221549 ],
+    ...                 [ 73.88003259,  80.91433048,   4.88878881],
+    ...                 [ 51.53875334,  34.45808177,  27.5873488 ]])
+    >>> bytescale(img)
+    array([[255,   0, 236],
+           [205, 225,   4],
+           [140,  90,  70]], dtype=uint8)
+    >>> bytescale(img, high=200, low=100)
+    array([[200, 100, 192],
+           [180, 188, 102],
+           [155, 135, 128]], dtype=uint8)
+    >>> bytescale(img, cmin=0, cmax=255)
+    array([[91,  3, 84],
+           [74, 81,  5],
+           [52, 34, 28]], dtype=uint8)
+    """
+    if data.dtype == np.uint8:
+        return data
+
+    if high < low:
+        raise ValueError("`high` should be larger than `low`.")
+
+    if cmin is None:
+        cmin = data.min()
+    if cmax is None:
+        cmax = data.max()
+
+    cscale = cmax - cmin
+    if cscale < 0:
+        raise ValueError("`cmax` should be larger than `cmin`.")
+    elif cscale == 0:
+        cscale = 1
+
+    scale = float(high - low) / cscale
+    bytedata = (data * 1.0 - cmin) * scale + 0.4999
+    bytedata[bytedata > high] = high
+    bytedata[bytedata < 0] = 0
+    return np.array(bytedata,dtype=np.uint8) + np.array(low,dtype=np.uint8)
 
 # Interpret image data as row-major instead of col-major
 # pg.setConfigOptions(imageAxisOrder='row-major')
