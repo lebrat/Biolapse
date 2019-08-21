@@ -41,7 +41,8 @@ Images and masks must be in png format.
 
 If you dont want or can't re-train the neural networks, you can download them at :
 
-`https://drive.google.com/drive/folders/19YDvcw3C33yNX0c8HSmI__JRfB21YIW9?usp=sharing`
+[![Download pre-trained neural networks](https://drive.google.com/drive/folders/19YDvcw3C33yNX0c8HSmI__JRfB21YIW9?usp=sharing)
+
 
 The trained neural network can be evaluated on the test data set using the command :
 
