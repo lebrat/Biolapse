@@ -40,7 +40,6 @@ Images and masks must be in png format.
 ### Evaluating the neural network
 
 If you dont want or can't re-train the neural networks, you can download them at :
-
 [![Download pre-trained neural networks](https://drive.google.com/drive/folders/19YDvcw3C33yNX0c8HSmI__JRfB21YIW9?usp=sharing)
 
 

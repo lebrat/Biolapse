@@ -138,7 +138,7 @@ for i in range(len(model_name_list)):
         generator_test = data_loader.DataGenerator3D(List_id_test, **params)
         # Model
         # Change model parameters here
-        net = model.Unet2D(input_size = (nx,ny,1),filters=64)
+        net = model.Unet2D(input_size = (nx,ny,1),filters=16)
     else:
         raise ValueError('Model name not understood: {0}. Must be in {{Unet3D, Unet2D, LSTM}}.'.format(model_name))
     net.summary()

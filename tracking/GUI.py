@@ -461,6 +461,7 @@ class Widget(QWidget):
 			
 		def shootingProcedure():
 			if self.plot_mask and not(self.Shooted):
+				self.prev_shoot = -1
 				self.Shooted = True
 				self.shootID = uuid.uuid4().hex
 				self.frameStart = self.w1.x
@@ -522,7 +523,7 @@ class Widget(QWidget):
 			else:
 				f= open(os.path.join(dir_file,'Outputs','cells.csv'),"a+")
 			if self.Shooted:
-				f.write(str(self.shootID)+","+str(self.w1.x)+","+str(self.currentBar[self.w1.x])+", , , , , , , , , ,\n")				
+				f.write(str(self.shootID)+","+str(self.w1.x)+","+str(self.currentBar[self.w1.x])+", , , , , , , , , ,\n")
 				self.prev_shoot = self.w1.x
 			else:
 				print('Not in shooting mode.')
@@ -535,6 +536,8 @@ class Widget(QWidget):
 			else:
 				f= open(os.path.join(dir_file,'Outputs','cells.csv'),"a+")
 			if self.Shooted:
+				if self.prev_shoot==-1:
+					self.prev_shoot = self.w1.x
 				f.write(str(self.shootID)+", , ,"+str(self.w1.x)+","+str(self.currentBar[self.w1.x])+", , , , , , , ,\n")
 				# Save masks in same folder than images			
 				if not os.path.exists(os.path.join(dir_file,'Outputs','zoom',str(self.shootID))):
@@ -559,6 +562,8 @@ class Widget(QWidget):
 			else:
 				f= open(os.path.join(dir_file,'Outputs','cells.csv'),"a+")
 			if self.Shooted:
+				if self.prev_shoot==-1:
+					self.prev_shoot = self.w1.x
 				f.write(str(self.shootID)+", , , , ,"+str(self.w1.x)+","+str(self.currentBar[self.w1.x])+", , , , , ,\n")
 				# Save masks in same folder than images			
 				if not os.path.exists(os.path.join(dir_file,'Outputs','zoom',str(self.shootID))):
@@ -583,6 +588,8 @@ class Widget(QWidget):
 			else:
 				f= open(os.path.join(dir_file,'Outputs','cells.csv'),"a+")
 			if self.Shooted:
+				if self.prev_shoot==-1:
+					self.prev_shoot = self.w1.x
 				f.write(str(self.shootID)+", , , , , , ,"+str(self.w1.x)+","+str(self.currentBar[self.w1.x])+", , , ,\n")
 				# Save masks in same folder than images			
 				if not os.path.exists(os.path.join(dir_file,'Outputs','zoom',str(self.shootID))):
@@ -608,6 +615,8 @@ class Widget(QWidget):
 			else:
 				f= open(os.path.join(dir_file,'Outputs','cells.csv'),"a+")
 			if self.Shooted:
+				if self.prev_shoot==-1:
+					self.prev_shoot = self.w1.x
 				f.write(str(self.shootID)+", , , , , , , , ,"+str(self.w1.x)+","+str(self.currentBar[self.w1.x])+", ,\n")
 				# Save masks in same folder than images			
 				if not os.path.exists(os.path.join(dir_file,'Outputs','zoom',str(self.shootID))):
@@ -631,6 +640,8 @@ class Widget(QWidget):
 			else:
 				f= open(os.path.join(dir_file,'Outputs','cells.csv'),"a+")
 			if self.Shooted:
+				if self.prev_shoot==-1:
+					self.prev_shoot = self.w1.x
 				f.write(str(self.shootID)+", , , , , , , , , , ,"+str(self.w1.x)+","+str(self.currentBar[self.w1.x])+"\n")
 				# Save masks in same folder than images			
 				if not os.path.exists(os.path.join(dir_file,'Outputs','zoom',str(self.shootID))):

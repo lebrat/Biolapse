@@ -190,16 +190,16 @@ def tif2png(path_, path_to_save, type_im, nx, ny):
         for filename in [f for f in filenames if f.endswith(".tif")]:
             im = np.array(imageio.mimread(os.path.join(
                 dirpath, filename), memtest=False), dtype=type_im)
-            im_resize = np.zeros((im.shape[1], nx, ny), dtype=type_im)
-            for t in range(im.shape[1]):
-                im_resize[t] = resize(im[0, t], (nx, ny),
+            im_resize = np.zeros((im.shape[0], nx, ny), dtype=type_im)
+            for t in range(im.shape[0]):
+                im_resize[t] = resize(im[t], (nx, ny),
                                       mode='constant', preserve_range=True)
                 im_resize[t] = np.array(np.iinfo(type_im).max*(im_resize[t]-np.min(im_resize[t])+1e-15)/(
                     np.max(im_resize[t])-np.min(im_resize[t])+1e-15), dtype=type_im)
             name_save_img = os.path.join(path_to_save, filename[:-4])
             if not os.path.exists(name_save_img):
                 os.makedirs(name_save_img)
-            for t in range(im.shape[1]):
+            for t in range(im.shape[0]):
                 imageio.imsave(os.path.join(
                     name_save_img, str(t)+'.png'), im_resize[t])
 
