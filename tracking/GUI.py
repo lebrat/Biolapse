@@ -472,9 +472,9 @@ class Widget(QWidget):
 				middle[1] = tmp
 				self.progress.show()
 				if self.secondChannel:
-					self.im, self.currentBar, self.im_focus, self.im_channel_focus = extractMaskFromPoint(self.masks,self.im,self.im_channel,0,middle,self.finish,self.progress, minimalSize=minimalSize)
+					self.im, self.currentBar, self.mask_crop, self.im_focus, self.im_channel_focus = extractMaskFromPoint(self.masks,self.im,self.im_channel,0,middle,self.finish,self.progress, minimalSize=minimalSize)
 				else:
-					self.im, self.currentBar, self.im_focus, _ = extractMaskFromPoint(self.masks,self.im,np.zeros(1),0,middle,self.finish,self.progress, minimalSize=minimalSize)
+					self.im, self.currentBar, self.mask_crop, self.im_focus, _ = extractMaskFromPoint(self.masks,self.im,np.zeros(1),0,middle,self.finish,self.progress, minimalSize=minimalSize)
 				updateImage()
 			elif not(self.plot_mask):
 				print('Error: load or compute mask first.')
@@ -542,10 +542,15 @@ class Widget(QWidget):
 				# Save masks in same folder than images			
 				if not os.path.exists(os.path.join(dir_file,'Outputs','zoom',str(self.shootID))):
 					os.makedirs(os.path.join(dir_file,'Outputs','zoom',str(self.shootID)))	
+				if not os.path.exists(os.path.join(dir_file,'Outputs','zoom_mask',str(self.shootID))):
+					os.makedirs(os.path.join(dir_file,'Outputs','zoom_mask',str(self.shootID)))	
 				for k in range(self.prev_shoot,self.w1.x+1):
 					tmp = np.array(self.im_focus[k],dtype=np.float32)
 					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
 					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					tmp = np.array(self.mask_crop[k],dtype=np.float32)
+					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+					imageio.imsave(os.path.join(dir_file,'Outputs','zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
 					if self.secondChannel:
 						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
 						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
@@ -568,10 +573,15 @@ class Widget(QWidget):
 				# Save masks in same folder than images			
 				if not os.path.exists(os.path.join(dir_file,'Outputs','zoom',str(self.shootID))):
 					os.makedirs(os.path.join(dir_file,'Outputs','zoom',str(self.shootID)))	
+				if not os.path.exists(os.path.join(dir_file,'Outputs','zoom_mask',str(self.shootID))):
+					os.makedirs(os.path.join(dir_file,'Outputs','zoom_mask',str(self.shootID)))	
 				for k in range(self.prev_shoot+1,self.w1.x+1):
 					tmp = np.array(self.im_focus[k],dtype=np.float32)
 					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
 					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					tmp = np.array(self.mask_crop[k],dtype=np.float32)
+					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+					imageio.imsave(os.path.join(dir_file,'Outputs','zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
 					if self.secondChannel:
 						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
 						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
@@ -594,10 +604,15 @@ class Widget(QWidget):
 				# Save masks in same folder than images			
 				if not os.path.exists(os.path.join(dir_file,'Outputs','zoom',str(self.shootID))):
 					os.makedirs(os.path.join(dir_file,'Outputs','zoom',str(self.shootID)))	
+				if not os.path.exists(os.path.join(dir_file,'Outputs','zoom_mask',str(self.shootID))):
+					os.makedirs(os.path.join(dir_file,'Outputs','zoom_mask',str(self.shootID)))	
 				for k in range(self.prev_shoot+1,self.w1.x+1):
 					tmp = np.array(self.im_focus[k],dtype=np.float32)
 					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
 					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					tmp = np.array(self.mask_crop[k],dtype=np.float32)
+					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+					imageio.imsave(os.path.join(dir_file,'Outputs','zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
 					if self.secondChannel:
 						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
 						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
@@ -621,10 +636,15 @@ class Widget(QWidget):
 				# Save masks in same folder than images			
 				if not os.path.exists(os.path.join(dir_file,'Outputs','zoom',str(self.shootID))):
 					os.makedirs(os.path.join(dir_file,'Outputs','zoom',str(self.shootID)))	
+				if not os.path.exists(os.path.join(dir_file,'Outputs','zoom_mask',str(self.shootID))):
+					os.makedirs(os.path.join(dir_file,'Outputs','zoom_mask',str(self.shootID)))	
 				for k in range(self.prev_shoot+1,self.w1.x+1):
 					tmp = np.array(self.im_focus[k],dtype=np.float32)
 					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
 					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					tmp = np.array(self.mask_crop[k],dtype=np.float32)
+					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+					imageio.imsave(os.path.join(dir_file,'Outputs','zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
 					if self.secondChannel:
 						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
 						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
@@ -650,6 +670,9 @@ class Widget(QWidget):
 					tmp = np.array(self.im_focus[k],dtype=np.float32)
 					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
 					imageio.imsave(os.path.join(dir_file,'Outputs','zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					tmp = np.array(self.mask_crop[k],dtype=np.float32)
+					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+					imageio.imsave(os.path.join(dir_file,'Outputs','zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
 					if self.secondChannel:
 						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
 						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)

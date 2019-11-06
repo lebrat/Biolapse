@@ -78,6 +78,7 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 	DictBar = {} # contains barycenter and image index 
 	DictBar[crtImage] = barycenter.copy()
 	im_crop = {} # crop of masks
+	mask_crop = {} # crop of masks
 	im_crop2 = {} # crop of masks is second channel of interest
 	# im_out = np.repeat(np.expand_dims(im.copy(),3),3,3) # Need to turn into rgb image, HistogramLUTItem doesn't support rgb
 	im_out = np.zeros_like(im)
@@ -101,7 +102,7 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 	# im_out[crtImage] = draw_border(maskFinal,im[crtImage].astype(np.uint8)) # HistogramLUTItem doesn't support rgb
 	im_out[crtImage] = np.dot(draw_border(maskFinal,im[crtImage].astype(np.uint8)), [0.299, 0.587, 0.144])
 	# Repeat the operation for each time step
-	progressbar.setValue(crtImage)
+	# progressbar.setValue(crtImage)
 	while crtImage < finish :
 		crtImage += 1
 		cpt_im += 1
@@ -124,7 +125,7 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 		# im_out[crtImage] = draw_border(maskFinal,im[crtImage].astype(np.uint8)) # HistogramLUTItem doesn't support rgb
 		im_out[crtImage] = np.dot(draw_border(maskFinal,im[crtImage].astype(np.uint8)), [0.299, 0.587, 0.144])
 
-		progressbar.setValue(crtImage)
+		# progressbar.setValue(crtImage)
 	cpt_im = 0
 	max_x_axis = np.max(max_x-min_x)
 	max_y_axis = np.max(max_y-min_y)
@@ -147,8 +148,15 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 		if y_u >ny_mask-1:
 			y_l -= y_u - (ny_mask -1)
 			y_u = ny_mask-1
+
+		maskFinal = np.zeros_like(masks[crtImage])
+		localCells,compo = find_connected_components(masks[crtImage],minimalSize) # Detect connected components
+		indexMin = argmin_CF(localCells,barycenter) # Compute argmin CF
+		maskFinal[np.where(compo==localCells[indexMin][0])] = 1 # take only mask of interest
+
 		im_crop[crtImage] = im[crtImage,x_l:x_u,y_l:y_u]
+		mask_crop[crtImage] = maskFinal[x_l:x_u,y_l:y_u]
 		if secondChannel:
 			im_crop2[crtImage] = im_channel[crtImage,x_l:x_u,y_l:y_u]
 		cpt_im += 1
-	return im_out.astype(np.uint8), DictBar, im_crop, im_crop2
+	return im_out.astype(np.uint8), DictBar, mask_crop, im_crop, im_crop2
