@@ -472,9 +472,9 @@ class Widget(QWidget):
 				middle[1] = tmp
 				self.progress.show()
 				if self.secondChannel:
-					self.im, self.currentBar, self.mask_crop, self.im_focus, self.im_channel_focus = extractMaskFromPoint(self.masks,self.im,self.im_channel,0,middle,self.finish,self.progress, minimalSize=minimalSize)
+					self.im, self.currentBar, self.mask_crop, self.im_focus, self.im_channel_focus, _ = extractMaskFromPoint(self.masks,self.im,self.im_channel,0,middle,self.finish,self.progress, minimalSize=minimalSize)
 				else:
-					self.im, self.currentBar, self.mask_crop, self.im_focus, _ = extractMaskFromPoint(self.masks,self.im,np.zeros(1),0,middle,self.finish,self.progress, minimalSize=minimalSize)
+					self.im, self.currentBar, self.mask_crop, self.im_focus, _, _ = extractMaskFromPoint(self.masks,self.im,np.zeros(1),0,middle,self.finish,self.progress, minimalSize=minimalSize)
 				updateImage()
 			elif not(self.plot_mask):
 				print('Error: load or compute mask first.')
