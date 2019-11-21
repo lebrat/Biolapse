@@ -34,7 +34,7 @@ Return list containing the number of the component, its barycenter and its area.
 """
 def find_connected_components(masks,minimalSize):
 	binary = cv2.threshold(masks, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-	num,compo=cv2.connectedComponents(binary)
+	num,compo=cv2.connectedComponents(binary,connectivity=8)
 	localCells = []
 	for chunckNo in range(1,num):
 		if len(np.where(compo==chunckNo)[0]) < minimalSize:
@@ -71,6 +71,7 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 	crtImage = imageStart
 	cpt_im = 0
 	maskFinal = np.zeros_like(masks[crtImage])
+	maskFinal_= np.zeros((finish+1,masks.shape[1],masks.shape[2]))
 	barycenter = np.copy(pos)
 	nx_mask = masks.shape[1]
 	ny_mask = masks.shape[2]
@@ -101,6 +102,7 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 
 	# im_out[crtImage] = draw_border(maskFinal,im[crtImage].astype(np.uint8)) # HistogramLUTItem doesn't support rgb
 	im_out[crtImage] = np.dot(draw_border(maskFinal,im[crtImage].astype(np.uint8)), [0.299, 0.587, 0.144])
+	maskFinal_[crtImage] = maskFinal
 	# Repeat the operation for each time step
 	# progressbar.setValue(crtImage)
 	while crtImage < finish :
@@ -124,6 +126,7 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 
 		# im_out[crtImage] = draw_border(maskFinal,im[crtImage].astype(np.uint8)) # HistogramLUTItem doesn't support rgb
 		im_out[crtImage] = np.dot(draw_border(maskFinal,im[crtImage].astype(np.uint8)), [0.299, 0.587, 0.144])
+		maskFinal_[crtImage] = maskFinal
 
 		# progressbar.setValue(crtImage)
 	cpt_im = 0
@@ -149,14 +152,16 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 			y_l -= y_u - (ny_mask -1)
 			y_u = ny_mask-1
 
+		barycenter = DictBar[crtImage]
 		maskFinal = np.zeros_like(masks[crtImage])
 		localCells,compo = find_connected_components(masks[crtImage],minimalSize) # Detect connected components
 		indexMin = argmin_CF(localCells,barycenter) # Compute argmin CF
 		maskFinal[np.where(compo==localCells[indexMin][0])] = 1 # take only mask of interest
 
+		# import ipdb; ipdb.set_trace()
 		im_crop[crtImage] = im[crtImage,x_l:x_u,y_l:y_u]
 		mask_crop[crtImage] = maskFinal[x_l:x_u,y_l:y_u]
 		if secondChannel:
 			im_crop2[crtImage] = im_channel[crtImage,x_l:x_u,y_l:y_u]
 		cpt_im += 1
-	return im_out.astype(np.uint8), DictBar, mask_crop, im_crop, im_crop2
+	return im_out.astype(np.uint8), DictBar, mask_crop, im_crop, im_crop2, maskFinal_
