@@ -19,7 +19,7 @@ MODE = "GPU" if "GPU" in [k.device_type for k in device_lib.list_local_devices()
 print(MODE)
 
 """
-This script is a demo of how to use the diffrent functions from {github_link} to train a neural network
+This script is a demo of how to use the diffrent functions from  https://github.com/lebrat/Biolapse to train a neural network
 to segment images with temporal information. 
 
 Parameters:
@@ -55,11 +55,9 @@ type_im = np.uint16
 nx = ny = 128
 TIME = 10
 
-path_train = 'Data/Train'
-path_test = 'Data/Test'
+path_train = '../Data/Segmentation/Train'
+path_test = '../Data/Segmentation/Test'
 
-# name_save_list = ['nn_XP_Unet3D','nn_XP_Unet2D','nn_XP_LSTM']
-# model_name_list = ['Unet3D', 'Unet2D', 'LSTM']
 name_save_list = ['nn_XP_Unet3D','nn_XP_Unet2D','nn_XP_LSTM']
 model_name_list = ['Unet3D', 'Unet2D', 'LSTM']
 tim = []

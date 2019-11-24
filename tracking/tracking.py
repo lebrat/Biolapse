@@ -6,7 +6,7 @@ Given a mask (binary image), draw the border of the mask on the image in red.
 """
 def draw_border(mask, image):
 	contours, hierarchy = cv2.findContours(mask.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-	return cv2.drawContours(cv2.cvtColor(image.astype(np.uint8), cv2.COLOR_GRAY2RGB), contours, -1, (255, 0, 0), 1)
+	return cv2.drawContours(cv2.cvtColor(image.astype(np.uint8), cv2.COLOR_GRAY2RGB), contours, -1, (255, 0, 0), 5)
 
 
 """

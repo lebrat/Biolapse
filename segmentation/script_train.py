@@ -22,7 +22,7 @@ MODE = "GPU" if "GPU" in [k.device_type for k in device_lib.list_local_devices()
 print(MODE)
 
 """
-This script is a demo of how to use the diffrent functions from {github_link} to train a neural network
+This script is a demo of how to use the diffrent functions from https://github.com/lebrat/Biolapse to train a neural network
 to segment images with temporal information. 
 
 Parameters:
@@ -48,7 +48,7 @@ Output:
 """
 
 ## Parameters
-epoch = 100
+epoch = 10
 lr = 1e-1 
 momentum = 0.8
 decay = 1e-6
@@ -58,26 +58,25 @@ type_im = np.uint16
 nx = ny = 64
 TIME = 10
 
-path_train = 'Data/Train'
-path_test = 'Data/Test'
+path_train = '../Data/Segmentation/Train'
+path_test = '../Data/Segmentation/Test'
 
 name_save = 'nn_demo'
 model_name = 'Unet3D' # 'LSTM'
 
 ## Augmentation
-path_imgs = './Data/png/train_im/*.png'
-path_masks = './Data/png/train_mask/*.png'
-path_save = './Data/Train'
-data_loader.augmentation_png(path_imgs,path_masks,path_save, original=True, oneOfTwo=True, reverse=True, reverseOneOfTwo=True,
- rotation1=30, rotation2=150,rotation3=240,rotation4=90,rotation5=290,rotation6=120, rotation7=330)
+# Uncomment to use data augmentation, need to specify the path of your images
+# path_imgs = 'path/of/train/images/*.png'
+# path_masks = 'path/of/train/masks/*.png'
+# path_save = '../Data/Segmentation/Train'
+# data_loader.augmentation_png(path_imgs,path_masks,path_save, original=True, oneOfTwo=True, reverse=True, reverseOneOfTwo=True,
+#  rotation1=30, rotation2=150,rotation3=240,rotation4=90,rotation5=290,rotation6=120, rotation7=330)
 
-path_imgs = './Data/png/test_im/*.png'
-path_masks = './Data/png/test_mask/*.png'
-path_save = './Data/Test'
-data_loader.augmentation_png(path_imgs,path_masks,path_save, original=True, oneOfTwo=True, reverse=True, reverseOneOfTwo=True,
- rotation1=30, rotation2=150,rotation3=240,rotation4=90,rotation5=290,rotation6=120, rotation7=330)
-
-
+# path_imgs = 'path/of/test/images/*.png'
+# path_masks = 'path/of/test/masks/*.png'
+# path_save = '../Data/Segmentation/Test'
+# data_loader.augmentation_png(path_imgs,path_masks,path_save, original=True, oneOfTwo=True, reverse=True, reverseOneOfTwo=True,
+#  rotation1=30, rotation2=150,rotation3=240,rotation4=90,rotation5=290,rotation6=120, rotation7=330)
 
 ## Load data and model
 if model_name=='Unet3D':
@@ -166,7 +165,6 @@ def step_decay(epoch):
     epochs_drop = 15.0
     lrate = initial_lrate * np.math.pow(drop, np.floor((1+epoch)/epochs_drop))
     return lrate
-
 ## Training
 net = train.training_generator(net,generator_train,epochs=epoch,steps=steps_per_epoch,
     save_name=name_save,generator_validation=generator_test,step_decay=step_decay)

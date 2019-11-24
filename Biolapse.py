@@ -14,8 +14,8 @@ import os
 import shutil
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QSizePolicy, QSlider, QSpacerItem, \
 	QVBoxLayout, QWidget, QFileDialog, QPushButton
-
-from tracking import extractMaskFromPoint
+from tracking.tracking import extractMaskFromPoint
+from im2phase import im2phase
 
 """
 Graphical interface - allow experienced user to label cycle of cells. 
@@ -273,30 +273,6 @@ class BottomBut(QWidget):
 		spacerItem = QSpacerItem(0, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
 		self.horizontalLayout.addItem(spacerItem)
 
-		self.butG1 = QPushButton("ᛰ G1")
-		self.butG1.clicked.connect(self.G1)
-		self.horizontalLayout.addWidget(self.butG1)
-
-		self.butEarlyS = QPushButton("ᛰ early S")
-		self.butEarlyS.clicked.connect(self.earlyS)
-		self.horizontalLayout.addWidget(self.butEarlyS)
-
-		self.butMidS = QPushButton("ᛰ mid S")
-		self.butMidS.clicked.connect(self.midS)
-		self.horizontalLayout.addWidget(self.butMidS)
-
-		self.butLateS = QPushButton("ᛰ late S")
-		self.butLateS.clicked.connect(self.lateS)
-		self.horizontalLayout.addWidget(self.butLateS)
-
-		self.butG2 = QPushButton("ᛰ G2")
-		self.butG2.clicked.connect(self.G2)
-		self.horizontalLayout.addWidget(self.butG2)
-
-		self.butEnd = QPushButton("ᛰ end Tracking")
-		self.butEnd.clicked.connect(self.ending)
-		self.horizontalLayout.addWidget(self.butEnd)
-
 		self.verticalLayout.addLayout(self.horizontalLayout)
 		self.resize(self.sizeHint())
 
@@ -307,24 +283,6 @@ class BottomBut(QWidget):
 	def unshoot(self):
 		print("unshoot")
 		self.isunShooted.emit()
-	def G1(self):
-		print("G1")
-		self.isG1.emit()
-	def earlyS(self):
-		print("Early S")
-		self.isEarlyS.emit()
-	def midS(self):
-		print("mid S")
-		self.isMidS.emit()
-	def lateS(self):
-		print("Late S")
-		self.isLateS.emit()
-	def G2(self):
-		print("G2")
-		self.isG2.emit()
-	def ending(self):
-		print('end')
-		self.isEnd.emit()
 	def loadMasks(self):
 		print("shoot")
 		self.isloadMasks.emit()
@@ -342,7 +300,7 @@ class Widget(QWidget):
 
 		# Image selection
 		self.fold = QFileDialog.getOpenFileNames(self, "Select files containing images (tiff or png).",
-		os.path.join(os.getcwd(),'..','Data'),"*.png *.tiff *.tif")
+		os.path.join(os.getcwd(),'Data'),"*.png *.tiff *.tif")
 		dir_file = self.fold[0][0][:self.fold[0][0].rfind(os.sep)]
 		file_name = self.fold[0][0][self.fold[0][0].rfind(os.sep)+1:]
 		file_name = file_name[:-4]
@@ -423,7 +381,7 @@ class Widget(QWidget):
 		def newChannelProcedure():
 			# Image selection
 			fold_ = QFileDialog.getOpenFileNames(self, "Select files containing other channel (tiff or png).",
-			os.path.join(os.getcwd(),'..','Data'),"*.png *.tiff *.tif")
+			os.path.join(os.getcwd(),'Data'),"*.png *.tiff *.tif")
 			# Check size of the data and format
 			if len(fold_[0])!=0:
 				if  fold_[0][0].endswith('tiff') or fold_[0][0].endswith('tif'):
@@ -463,28 +421,46 @@ class Widget(QWidget):
 			
 		def shootingProcedure():
 			if self.plot_mask and not(self.Shooted):
-				self.prev_shoot = -1
-				self.Shooted = True
-				self.shootID = uuid.uuid4().hex
-				self.frameStart = self.w1.x
-				initBB = np.array(self.boundingBox)
-				middle = np.array(np.mean(initBB,axis=0),dtype=int)
-				tmp = middle[0]
-				middle[0] = middle[1]
-				middle[1] = tmp
-				self.progress.show()
+				print('Shooting mode, Biolpase working...')
 				if self.secondChannel:
-					self.im, self.currentBar, self.mask_crop, self.im_focus, self.im_channel_focus, _ = extractMaskFromPoint(self.masks,self.im,self.im_channel,0,middle,self.finish,self.progress, minimalSize=minimalSize)
+					phase_pred, im_crop_list, im_crop_list2 = im2phase(self.im_nn,self.im_channel,self.masks,max_speed_disp=20,max_volume_var=0.3,minimalSize=100,nx_crop=128,ny_crop=128,save_out=True)
 				else:
-					self.im, self.currentBar, self.mask_crop, self.im_focus, _, _ = extractMaskFromPoint(self.masks,self.im,np.zeros(1),0,middle,self.finish,self.progress, minimalSize=minimalSize)
-				updateImage()
-				print('Shooting mode, identify phases.')
+					phase_pred, im_crop_list, _ = im2phase(self.im_nn,np.zeros(1),self.masks,max_speed_disp=20,max_volume_var=0.3,minimalSize=100,nx_crop=128,ny_crop=128,save_out=True)
+				for i in range(len(im_crop_list)):
+					if not os.path.exists(os.path.join(dir_file,'Biolapse','outputs','G',file_name,str(i).zfill(5))):
+						os.makedirs(os.path.join(dir_file,'Biolapse','outputs','G',file_name,str(i).zfill(5)))	
+					for j in range(im_crop_list[i].shape[0]):
+						tmp = im_crop_list[i][j]
+						tmpim = np.array(255*(tmp-np.min(tmp))/(np.max(tmp)-np.min(tmp)),dtype=np.uint8)
+						if self.secondChannel:
+							tmp = im_crop_list2[i][j]
+							tmpim2 = np.array(255*(tmp-np.min(tmp))/(np.max(tmp)-np.min(tmp)),dtype=np.uint8)
+						if phase_pred[i][j]==0:
+							imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','G',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
+							if self.secondChannel:
+								imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','G',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
+						if phase_pred[i][j]==1:
+							imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','earlyS',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
+							if self.secondChannel:
+								imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','earlyG',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
+						if phase_pred[i][j]==2:
+							imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','midS',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
+							if self.secondChannel:
+								imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','midS',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
+						if phase_pred[i][j]==3:
+							imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','lateS',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
+							if self.secondChannel:
+								imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','lateS',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
+
+				
+				print('Classification finished')
 			elif not(self.plot_mask):
 				print('Error: load or compute mask first.')
 				return 0
 			elif self.Shooted:
 				print('Error: already in shooting procedure.')
 				return 0
+
 		def unShoot():
 			if self.plot_mask and self.Shooted:
 				self.Shooted = False
@@ -500,197 +476,13 @@ class Widget(QWidget):
 				print('Error: already in unshooting procedure.')
 				return 0
 
-		"""
-		Writting into csv file.
-		The columns of the file are as follows:
-			- Code of the current shooting procedure, unique.
-			- Time where G1 begin.
-			- Position of barycenter of mask when G1 begin.
-			- Time where early S begin.
-			- Position of barycenter of mask when early S begin.
-			- Time where mid S begin.
-			- Position of barycenter of mask when mid S begin.
-			- Time where late S begin.
-			- Position of barycenter of mask when late S begin.
-			- Time where G2 begin.
-			- Position of barycenter of mask when G2 begin.
-			- Time where tracking end.
-			- Position of barycenter of mask when tracking ended.
-		"""
-		if not os.path.exists(os.path.join(dir_file,'Outputs',file_name)):
-			os.mkdir(os.path.join(dir_file,'Outputs',file_name))
-		def G1():
-			self.w2.butG1.setStyleSheet("background-color: red")
-			if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'cells.csv')):
-				f= open(os.path.join(dir_file,'Outputs',file_name,'cells.csv'),"w+")
-			else:
-				f= open(os.path.join(dir_file,'Outputs',file_name,'cells.csv'),"a+")
-			if self.Shooted:
-				f.write(str(self.shootID)+","+str(self.w1.x)+","+str(self.currentBar[self.w1.x])+", , , , , , , , , ,\n")
-				self.prev_shoot = self.w1.x
-			else:	
-				print('Not in shooting mode.')
-			f.close()
-		def earlyS():
-			self.w2.butG1.setStyleSheet("background-color: white")
-			self.w2.butEarlyS.setStyleSheet("background-color: red")
-			if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'cells.csv')):
-				f= open(os.path.join(dir_file,'Outputs',file_name,'cells.csv'),"w+")
-			else:
-				f= open(os.path.join(dir_file,'Outputs',file_name,'cells.csv'),"a+")
-			if self.Shooted:
-				if self.prev_shoot==-1:
-					self.prev_shoot = self.w1.x
-				f.write(str(self.shootID)+", , ,"+str(self.w1.x)+","+str(self.currentBar[self.w1.x])+", , , , , , , ,\n")
-				# Save masks in same folder than images			
-				if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID))):
-					os.makedirs(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID)))	
-				if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID))):
-					os.makedirs(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID)))	
-				for k in range(self.prev_shoot,self.w1.x+1):
-					tmp = np.array(self.im_focus[k]*self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					tmp = np.array(self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					if self.secondChannel:
-						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
-				self.prev_shoot = self.w1.x
-			else:
-				print('Not in shooting mode.')
-			f.close()
-		def midS():
-			self.w2.butEarlyS.setStyleSheet("background-color: white")
-			self.w2.butMidS.setStyleSheet("background-color: red")
-			if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'cells.csv')):
-				f= open(os.path.join(dir_file,'Outputs',file_name,'cells.csv'),"w+")
-			else:
-				f= open(os.path.join(dir_file,'Outputs',file_name,'cells.csv'),"a+")
-			if self.Shooted:
-				if self.prev_shoot==-1:
-					self.prev_shoot = self.w1.x
-				f.write(str(self.shootID)+", , , , ,"+str(self.w1.x)+","+str(self.currentBar[self.w1.x])+", , , , , ,\n")
-				# Save masks in same folder than images			
-				if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID))):
-					os.makedirs(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID)))	
-				if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID))):
-					os.makedirs(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID)))	
-				for k in range(self.prev_shoot+1,self.w1.x+1):
-					tmp = np.array(self.im_focus[k]*self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					tmp = np.array(self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					if self.secondChannel:
-						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
-				self.prev_shoot = self.w1.x
-			else:
-				print('Not in shooting mode.')
-			f.close()
-		def lateS():
-			self.w2.butMidS.setStyleSheet("background-color: white")
-			self.w2.butLateS.setStyleSheet("background-color: red")
-			if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'cells.csv')):
-				f= open(os.path.join(dir_file,'Outputs',file_name,'cells.csv'),"w+")
-			else:
-				f= open(os.path.join(dir_file,'Outputs',file_name,'cells.csv'),"a+")
-			if self.Shooted:
-				if self.prev_shoot==-1:
-					self.prev_shoot = self.w1.x
-				f.write(str(self.shootID)+", , , , , , ,"+str(self.w1.x)+","+str(self.currentBar[self.w1.x])+", , , ,\n")
-				# Save masks in same folder than images			
-				if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID))):
-					os.makedirs(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID)))	
-				if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID))):
-					os.makedirs(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID)))	
-				for k in range(self.prev_shoot+1,self.w1.x+1):
-					tmp = np.array(self.im_focus[k]*self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					tmp = np.array(self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					if self.secondChannel:
-						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
-				self.prev_shoot = self.w1.x
-			else:
-				print('Not in shooting mode.')
-
-			f.close()
-		def G2():
-			self.w2.butLateS.setStyleSheet("background-color: white")
-			self.w2.butG2.setStyleSheet("background-color: red")
-			if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'cells.csv')):
-				f= open(os.path.join(dir_file,'Outputs',file_name,'cells.csv'),"w+")
-			else:
-				f= open(os.path.join(dir_file,'Outputs',file_name,'cells.csv'),"a+")
-			if self.Shooted:
-				if self.prev_shoot==-1:
-					self.prev_shoot = self.w1.x
-				f.write(str(self.shootID)+", , , , , , , , ,"+str(self.w1.x)+","+str(self.currentBar[self.w1.x])+", ,\n")
-				# Save masks in same folder than images			
-				if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID))):
-					os.makedirs(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID)))	
-				if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID))):
-					os.makedirs(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID)))	
-				for k in range(self.prev_shoot+1,self.w1.x+1):
-					tmp = np.array(self.im_focus[k]*self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					tmp = np.array(self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					if self.secondChannel:
-						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
-				self.prev_shoot = self.w1.x
-			else:
-				print('Not in shooting mode.')
-			f.close()
-		def end():
-			self.w2.butG2.setStyleSheet("background-color: white")
-			if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'cells.csv')):
-				f= open(os.path.join(dir_file,'Outputs',file_name,'cells.csv'),"w+")
-			else:
-				f= open(os.path.join(dir_file,'Outputs',file_name,'cells.csv'),"a+")
-			if self.Shooted:
-				if self.prev_shoot==-1:
-					self.prev_shoot = self.w1.x
-				f.write(str(self.shootID)+", , , , , , , , , , ,"+str(self.w1.x)+","+str(self.currentBar[self.w1.x])+"\n")
-				# Save masks in same folder than images			
-				if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID))):
-					os.makedirs(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID)))	
-				for k in range(self.prev_shoot+1,self.w1.x+1):
-					tmp = np.array(self.im_focus[k]*self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					tmp = np.array(self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
-					if self.secondChannel:
-						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
-				self.prev_shoot = self.w1.x
-			else:
-				print('Not in shooting mode.')
-			f.close()
 
 		"""
 		Load masks from tiff or png file. User should select a tiff image containing a time sequence of mask, or several png files refered as masks.
 		"""
 		def loadMasks():
 			loadsuccesfull = False
-			self.masks_path = QFileDialog.getOpenFileNames(self, "Select file(s) where masks are.",os.path.join(os.getcwd(),'..','Data'),
+			self.masks_path = QFileDialog.getOpenFileNames(self, "Select file(s) where masks are.",os.path.join(os.getcwd(),'Data'),
 			"*.png *.tiff *.tif")
 			if len(self.masks_path[0])!=0:
 				if  self.masks_path[0][0].endswith('tiff') or self.masks_path[0][0].endswith('tif'):
@@ -772,7 +564,7 @@ class Widget(QWidget):
 				return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
 			def dice_coef_loss_K(y_true, y_pred):
 				return 1-dice_coef_K(y_true, y_pred)
-			self.model = QFileDialog.getOpenFileName(self, "Select h5 file defining the AI model.",os.path.join(os.getcwd(),'..','Data','Segmentation','Model'),
+			self.model = QFileDialog.getOpenFileName(self, "Select h5 file defining the AI model.",os.path.join(os.getcwd(),'Data','Segmentation','Model'),
 			"*.h5 *.hdf5")
 
 			# Load model and parameters
@@ -883,12 +675,6 @@ class Widget(QWidget):
 		# Get action of user
 		self.w2.isShooted.connect(shootingProcedure)
 		self.w2.isunShooted.connect(unShoot)
-		self.w2.isG1.connect(G1)
-		self.w2.isEarlyS.connect(earlyS)
-		self.w2.isMidS.connect(midS)
-		self.w2.isLateS.connect(lateS)
-		self.w2.isG2.connect(G2)
-		self.w2.isEnd.connect(end)
 		self.w2.isloadMasks.connect(loadMasks)
 		self.w2.iscomputeMasks.connect(computeMasks)
 		self.img = pg.ImageItem(None, border="w")
