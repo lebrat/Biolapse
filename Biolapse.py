@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtCore import Qt ,pyqtSignal, QRect
 from PyQt5.QtGui import QPalette
-from PyQt5.QtWidgets import QProgressBar
+from PyQt5.QtWidgets import QProgressBar, QLineEdit
 import uuid
 import pyqtgraph as pg
 import pyqtgraph.graphicsItems as pgg
@@ -13,9 +13,10 @@ import cv2
 import os
 import shutil
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QSizePolicy, QSlider, QSpacerItem, \
-	QVBoxLayout, QWidget, QFileDialog, QPushButton
+	QVBoxLayout, QWidget, QFileDialog, QPushButton, QInputDialog
 from tracking.tracking import extractMaskFromPoint
 from im2phase import im2phase
+from PyQt5.QtCore import QSize    
 
 """
 Graphical interface - allow experienced user to label cycle of cells. 
@@ -227,6 +228,39 @@ class InterfaceManagerButton(QWidget):
 		print("End saving crop")
 		self.isTrackEnd.emit()
 
+class Window_ask( QWidget):
+
+	def __init__(self):
+		super().__init__()
+
+		self.init_ui()
+
+	def init_ui(self):
+		self.le = QLineEdit()
+		self.b1 = QPushButton('Clear')
+		self.b2 = QPushButton('Print')
+
+		v_box = QVBoxLayout()
+		v_box.addWidget(self.le)
+		v_box.addWidget(self.b1)
+		v_box.addWidget(self.b2)
+
+		self.setLayout(v_box)
+		self.setWindowTitle('PyQt5 Lesson 7')
+
+		self.b1.clicked.connect(self.btn_clk)
+		self.b2.clicked.connect(self.btn_clk)
+
+		self.show()
+
+	def btn_clk(self):
+		sender = self.sender()
+		if sender.text() == 'Print':
+			print(self.le.text())
+		else:
+			self.le.clear()
+
+
 """
 Implement bottom buttons.
 The buttons made are:
@@ -237,7 +271,9 @@ The buttons made are:
 """
 class BottomBut(QWidget):
 	isShooted   = pyqtSignal()
-	isunShooted = pyqtSignal()
+	iscomputeSpeed = pyqtSignal()
+	iscomputeVolume = pyqtSignal()
+	iscomputeStep = pyqtSignal()
 	isG1        = pyqtSignal()
 	isEarlyS    = pyqtSignal()
 	isMidS      = pyqtSignal()
@@ -251,13 +287,9 @@ class BottomBut(QWidget):
 		self.verticalLayout = QVBoxLayout(self)
 		self.horizontalLayout = QHBoxLayout()
 
-		self.butShoot = QPushButton("᪠ Shoot")
+		self.butShoot = QPushButton("᪠ Detect and label cells")
 		self.butShoot.clicked.connect(self.shoot)
 		self.horizontalLayout.addWidget(self.butShoot)
-
-		self.butunShoot = QPushButton("᳁ Un-Shoot")
-		self.butunShoot.clicked.connect(self.unshoot)
-		self.horizontalLayout.addWidget(self.butunShoot)
 
 		spacerItem = QSpacerItem(0, 0.5, QSizePolicy.Expanding, QSizePolicy.Minimum)
 		self.horizontalLayout.addItem(spacerItem)
@@ -270,6 +302,19 @@ class BottomBut(QWidget):
 		self.butcomputeMasks.clicked.connect(self.computeMasks)
 		self.horizontalLayout.addWidget(self.butcomputeMasks)
 
+
+		self.butcomputeSpeed = QPushButton("Maximum speed")
+		self.butcomputeSpeed.clicked.connect(self.computeSpeed)
+		self.horizontalLayout.addWidget(self.butcomputeSpeed)
+
+		self.butcomputeVolume = QPushButton("Maximum volume increase")
+		self.butcomputeVolume.clicked.connect(self.computeVolume)
+		self.horizontalLayout.addWidget(self.butcomputeVolume)
+
+		self.butcomputeStep = QPushButton("step")
+		self.butcomputeStep.clicked.connect(self.computeStep)
+		self.horizontalLayout.addWidget(self.butcomputeStep)
+
 		spacerItem = QSpacerItem(0, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
 		self.horizontalLayout.addItem(spacerItem)
 
@@ -278,7 +323,7 @@ class BottomBut(QWidget):
 
 	## click actions emitting signals
 	def shoot(self):
-		print("shoot -- May take few seconds...")
+		print("Detecting and labeling cells -- May take few seconds...")
 		self.isShooted.emit()
 	def unshoot(self):
 		print("unshoot")
@@ -289,6 +334,15 @@ class BottomBut(QWidget):
 	def computeMasks(self):
 		print("shoot")
 		self.iscomputeMasks.emit()
+	def computeSpeed(self):
+		print("")
+		self.iscomputeSpeed.emit()
+	def computeVolume(self):
+		print("")
+		self.iscomputeVolume.emit()
+	def computeStep(self):
+		print("")
+		self.iscomputeStep.emit()
 
 
 class Widget(QWidget):
@@ -371,7 +425,12 @@ class Widget(QWidget):
 		self.progress.setGeometry(0, 0, 300, 25)
 		self.progress.setMaximum(self.finish)
 		self.horizontalLayout.addWidget(self.progress)
+		self.speed=60
+		self.volume=0.5
+		self.step=20
 		
+		
+
 		def quitProcedure():
 			sys.exit()
 		"""
@@ -421,33 +480,41 @@ class Widget(QWidget):
 			
 		def shootingProcedure():
 			if self.plot_mask and not(self.Shooted):
-				print('Shooting mode, Biolpase working...')
+				print('Detection mode, Biolpase working...')
 				if self.secondChannel:
-					phase_pred, im_crop_list, im_crop_list2 = im2phase(self.im_nn,self.im_channel,self.masks,max_speed_disp=20,max_volume_var=0.3,minimalSize=100,nx_crop=128,ny_crop=128,save_out=True)
+					phase_pred, im_crop_list, im_crop_list2, im_final = im2phase(self.im_nn,self.im_channel,self.masks,max_speed_disp=self.speed,max_volume_var=self.volume,minimalSize=100,nx_crop=128,ny_crop=128,save_out=True,step=self.step)
 				else:
-					phase_pred, im_crop_list, _ = im2phase(self.im_nn,np.zeros(1),self.masks,max_speed_disp=20,max_volume_var=0.3,minimalSize=100,nx_crop=128,ny_crop=128,save_out=True)
+					phase_pred, im_crop_list, _, im_final = im2phase(self.im_nn,np.zeros(1),self.masks,max_speed_disp=self.speed,max_volume_var=self.volume,minimalSize=100,nx_crop=128,ny_crop=128,save_out=True,step=self.step)
+				self.im = im_final
+				updateImage()
 				for i in range(len(im_crop_list)):
-					if not os.path.exists(os.path.join(dir_file,'Biolapse','outputs','G',file_name,str(i).zfill(5))):
-						os.makedirs(os.path.join(dir_file,'Biolapse','outputs','G',file_name,str(i).zfill(5)))	
-					for j in range(im_crop_list[i].shape[0]):
+					for j in range(len(im_crop_list[i])):
 						tmp = im_crop_list[i][j]
 						tmpim = np.array(255*(tmp-np.min(tmp))/(np.max(tmp)-np.min(tmp)),dtype=np.uint8)
 						if self.secondChannel:
 							tmp = im_crop_list2[i][j]
 							tmpim2 = np.array(255*(tmp-np.min(tmp))/(np.max(tmp)-np.min(tmp)),dtype=np.uint8)
 						if phase_pred[i][j]==0:
+							if not os.path.exists(os.path.join(dir_file,'Biolapse','outputs','G',file_name,str(i).zfill(5))):
+								os.makedirs(os.path.join(dir_file,'Biolapse','outputs','G',file_name,str(i).zfill(5)))
 							imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','G',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
 							if self.secondChannel:
 								imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','G',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
 						if phase_pred[i][j]==1:
+							if not os.path.exists(os.path.join(dir_file,'Biolapse','outputs','earlyS',file_name,str(i).zfill(5))):
+								os.makedirs(os.path.join(dir_file,'Biolapse','outputs','earlyS',file_name,str(i).zfill(5)))
 							imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','earlyS',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
 							if self.secondChannel:
 								imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','earlyG',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
 						if phase_pred[i][j]==2:
+							if not os.path.exists(os.path.join(dir_file,'Biolapse','outputs','midS',file_name,str(i).zfill(5))):
+								os.makedirs(os.path.join(dir_file,'Biolapse','outputs','midS',file_name,str(i).zfill(5)))
 							imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','midS',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
 							if self.secondChannel:
 								imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','midS',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
 						if phase_pred[i][j]==3:
+							if not os.path.exists(os.path.join(dir_file,'Biolapse','outputs','lateS',file_name,str(i).zfill(5))):
+								os.makedirs(os.path.join(dir_file,'Biolapse','outputs','lateS',file_name,str(i).zfill(5)))
 							imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','lateS',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
 							if self.secondChannel:
 								imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','lateS',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
@@ -461,21 +528,14 @@ class Widget(QWidget):
 				print('Error: already in shooting procedure.')
 				return 0
 
-		def unShoot():
-			if self.plot_mask and self.Shooted:
-				self.Shooted = False
-				self.frameStart = None
-				self.currentBar = None
-				self.shootID = None
-				self.im = self.im_original.copy()
-				updateImage()
-			elif not(self.plot_mask):
-				print('Error: load or compute mask first.')
-				return 0
-			elif not(self.Shooted):
-				print('Error: already in unshooting procedure.')
-				return 0
 
+		def Speed():
+			self.speed = self.getInt('Maximum speed in one time step (in pixels)')
+		def Volume():
+			tmp = self.getInt('Maximum volume increase (in %)')
+			self.volume = float(tmp)/100.
+		def Step():
+			self.step = self.getInt('Time between two detection of cells.')
 
 		"""
 		Load masks from tiff or png file. User should select a tiff image containing a time sequence of mask, or several png files refered as masks.
@@ -674,7 +734,9 @@ class Widget(QWidget):
 
 		# Get action of user
 		self.w2.isShooted.connect(shootingProcedure)
-		self.w2.isunShooted.connect(unShoot)
+		self.w2.iscomputeSpeed.connect(Speed)
+		self.w2.iscomputeVolume.connect(Volume)
+		self.w2.iscomputeStep.connect(Step)
 		self.w2.isloadMasks.connect(loadMasks)
 		self.w2.iscomputeMasks.connect(computeMasks)
 		self.img = pg.ImageItem(None, border="w")
@@ -744,7 +806,12 @@ class Widget(QWidget):
 		self.w3.isChannel.connect(newChannelProcedure)
 		self.w3.isTrack.connect(trackingProcedure)
 		self.w3.isTrackEnd.connect(endTrackingProcedure)
-
+	def getInt(self,message):
+		d,okPressed=QInputDialog.getInt(self,message,'Value',30,1,1000,10)
+		if okPressed:
+			print(message)
+			print('Value: '+str(int(d)))
+		return int(d)
 
 
 

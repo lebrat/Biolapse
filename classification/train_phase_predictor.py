@@ -24,7 +24,8 @@ def train_phase_predictor(im_train,feature_train,im_test,feature_test,save_out=T
     optimizer = optim.Adam(model.parameters())
     for epoch in range(1, epochs + 1):
         train(model, device, alldata_train, alldata_test, optimizer, epoch, nit=nit_train, nbatch=nbatch)
-    torch.save(model, os.path.join('..','Data','Classification','mytosis_cnn.pt'))
+    # torch.save(model, os.path.join('..','Data','Classification','mytosis_cnn.pt'))
+    torch.save(model.state_dict(), os.path.join('..','Data','Classification','mytosis_cnn.pt'))
 
     ## test prediction
     randi = np.random.randint(0,im_test.shape[0],size=im_test.shape[0])

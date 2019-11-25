@@ -11,24 +11,25 @@ import itertools,operator
 import shutil
 from classification.phase_prediction import phase_prediction
 
-## Params
-# TIME = 10
-# path_segmentation = 'nn_XP_Unet3D.h5'
-# save_out = True
-# thresh = 0.5
-# minimalSize  = 100
-# im_channel = np.zeros(1)
-# max_speed_disp = 20
-# max_volume_var = 30/100
-# nx = ny = 256
-# nx_crop = ny_crop = 128
-# im_ = np.array(imageio.mimread('sequenceS21PCNA.tif',memtest=False),dtype=np.float32)
-# im = np.zeros((im_.shape[0],nx,ny))
-# for i in range(im.shape[0]):
-#     im[i] = resize((im_[i]-np.min(im_[i]))/(np.max(im_[i])-np.min(im_[i])),(nx,ny))
+
+"""
+Use segmented time series images to detect cells and track them in time. Then the phase is predicted 
+using Viterbi and a neural network trained to predict phase probability.
+
+INPUT: 
+    - im: original images.
+    - im_channel (optional): second channel images.
+    - masks: segmentation of 'im'.
+    - max_speed: maximum speed in pixel allow between one cell in one time step.
+    - max_volume_var: maximum volume variation (in %) allow between one cell in one time step.
+    - minimalSize: minimal size of an admissible cell.
+    - nx_crop, ny_crop: size of the crop, should be adequate to the neural network.
+    - save_out: if True, save images in png format, in Data/Biolapse.
+    - step: number of image between which we try to detect new cells; If to small, processing might be too long.
+"""
 
 
-def im2phase(im_,im_channel,masks,max_speed_disp=20,max_volume_var=0.3,minimalSize=100,nx_crop=128,ny_crop=128,save_out=True):
+def im2phase(im_,im_channel,masks,max_speed_disp=20,max_volume_var=0.3,minimalSize=100,nx_crop=128,ny_crop=128,save_out=True,step=20):
 
 
     mask_ = np.array(255*(masks>1e-7),dtype=np.uint8)
@@ -41,14 +42,8 @@ def im2phase(im_,im_channel,masks,max_speed_disp=20,max_volume_var=0.3,minimalSi
         # Dilate
         kernel = np.ones((4,4), np.uint8) 
         mask_final[i] = cv2.dilate(mask_erosion, kernel, iterations=1) 
-        # if save_out:
-        #     if not os.path.exists(os.path.join('Data','Biolapse','masks')):
-        #         os.makedirs(os.path.join('Data','Biolapse','masks'))	
-        #     for i in range(mask_final.shape[0]):
-        #         imageio.imsave(os.path.join('Data','Biolapse','masks',str(i).zfill(5)+'.png'),np.squeeze(mask_final[i]))
 
     ## Find connected components
-    step = 20
     mask_crop_list = []
     im_crop_list = []
     im_crop2_list = []
@@ -97,15 +92,6 @@ def im2phase(im_,im_channel,masks,max_speed_disp=20,max_volume_var=0.3,minimalSi
                 im_crop_list.append(tmp_im)
                 mask_crop_list.append(tmp_mask)
                 im_crop2_list.append(tmp_im2)
-                # if save_out:
-                #     if not os.path.exists(os.path.join('Data','Biolapse','tracking',str(l).zfill(5)+'_'+str(k).zfill(5))):
-                #         os.makedirs(os.path.join('Data','Biolapse','tracking',str(l).zfill(5)+'_'+str(k).zfill(5)))
-                #     else:
-                #         shutil.rmtree(os.path.join('Data','Biolapse','tracking',str(l).zfill(5)+'_'+str(k).zfill(5)))
-                #         os.makedirs(os.path.join('Data','Biolapse','tracking',str(l).zfill(5)+'_'+str(k).zfill(5)))
-                #     for i in range(len(tmp_im)):
-                #         imageio.imsave(os.path.join('Data','Biolapse','tracking',str(l).zfill(5)+'_'+str(k).zfill(5),'im_'+str(i).zfill(5)+'.png'),np.squeeze(tmp_im[i]))
-                #         imageio.imsave(os.path.join('Data','Biolapse','tracking',str(l).zfill(5)+'_'+str(k).zfill(5),'mask_'+str(i).zfill(5)+'.png'),np.squeeze(255*tmp_mask[i]))
 
 
     for i in range(im.shape[0]):
@@ -118,18 +104,18 @@ def im2phase(im_,im_channel,masks,max_speed_disp=20,max_volume_var=0.3,minimalSi
             os.makedirs(os.path.join('Data','Biolapse','tracking','all'))
         for i in range(im_final.shape[0]):
             imageio.imsave(os.path.join('Data','Biolapse','tracking','all',str(i).zfill(5)+'.png'),np.squeeze(im_final[i]))
-
     # np.save(os.path.join('Data','im_crop.npy'),im_crop_list)
     # np.save(os.path.join('Data','mask_crop.npy'),mask_crop_list)
     # np.save(os.path.join('Data','im_crop2.npy'),im_crop2_list)
 
     ## Apply phase prediction on each track
-
-    # im_crop_list=np.load(os.path.join('Data','Biolapse','im_crop.npy'),allow_pickle=True)
-    # mask_crop_list=np.load(os.path.join('Data','Biolapse','mask_crop.npy'),allow_pickle=True)
-    # im_crop2_list=np.load(os.path.join('Data','Biolapse','im_crop2.npy'),allow_pickle=True)
-
-    model = torch.load(os.path.join('Data','Classification','mytosis_cnn.pt'))
+    # im_crop_list=np.load(os.path.join('Data','im_crop.npy'),allow_pickle=True)
+    # mask_crop_list=np.load(os.path.join('Data','mask_crop.npy'),allow_pickle=True)
+    # im_crop2_list=np.load(os.path.join('Data','im_crop2.npy'),allow_pickle=True)
+    from classification.utils import Net
+    model = Net()
+    model.load_state_dict(torch.load(os.path.join('Data','Classification','mytosis_cnn.pt')))
+    # model = torch.load(os.path.join('Data','Classification','mytosis_cnn.pt'))
     model.eval()
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
@@ -139,4 +125,4 @@ def im2phase(im_,im_channel,masks,max_speed_disp=20,max_volume_var=0.3,minimalSi
     for k in range(len(im_crop_list)):
         phase_pred_, _ = phase_prediction(model,np.array(im_crop_list[k]),np.zeros(1),np.zeros(1),False,n_max=40,nclass=4,p_tr=0.05*np.ones(4))
         phase_pred.append(phase_pred_)
-    return phase_pred, im_crop_list, im_crop2_list
+    return phase_pred, im_crop_list, im_crop2_list, im_final
