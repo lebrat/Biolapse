@@ -55,7 +55,7 @@ decay = 1e-6
 steps_per_epoch = 15
 batch_size = 4
 type_im = np.uint16
-nx = ny = 64
+nx = ny = 128
 TIME = 10
 
 path_train = '../Data/Segmentation/Train'
@@ -83,12 +83,18 @@ if model_name=='Unet3D':
     # Data
     X_train, Y_train = data_loader.path_to_time_batchs(path_train,nx,ny,TIME=TIME,type_im=type_im,format_im='png',
     code_im1='images',code_im2='masks')
-    X_train = np.expand_dims(np.array(X_train, dtype=np.float32)/np.iinfo(type_im).max,4)
-    Y_train = np.expand_dims(np.array(Y_train, dtype=np.float32)/np.iinfo(type_im).max,4)
+    X_train = np.expand_dims(np.array(X_train, dtype=np.float32),4)
+    Y_train = np.expand_dims(np.array(Y_train, dtype=np.float32),4)
+    for t in range(X_train.shape[0]):
+        X_train[t] = X_train[t]/np.max(X_train[t])
+        Y_train[t] = Y_train[t]/np.max(Y_train[t])
     X_test, Y_test= data_loader.path_to_time_batchs(path_test,nx,ny,TIME=TIME,type_im=type_im,format_im='png',
     code_im1='images',code_im2='masks')
-    X_test = np.expand_dims(np.array(X_test, dtype=np.float32)/np.iinfo(type_im).max,4)
-    Y_test = np.expand_dims(np.array(Y_test, dtype=np.float32)/np.iinfo(type_im).max,4)
+    X_test = np.expand_dims(np.array(X_test, dtype=np.float32),4)
+    Y_test = np.expand_dims(np.array(Y_test, dtype=np.float32),4)
+    for t in range(X_test.shape[0]):
+        X_test[t] = X_test[t]/np.max(X_test[t])
+        Y_test[t] = Y_test[t]/np.max(Y_test[t])
     List_id_train = data_loader.array_to_npy(X_train,Y_train,test=False,name=name_save)
     List_id_test = data_loader.array_to_npy(X_test,Y_test,test=True,name=name_save)
     params = {'dim': (nx,ny,TIME,1),
@@ -107,12 +113,18 @@ elif model_name=='LSTM':
     # Data
     X_train, Y_train = data_loader.path_to_time_batchs(path_train,nx,ny,TIME=TIME,type_im=type_im,format_im='png',
     code_im1='images',code_im2='masks')
-    X_train = np.expand_dims(np.array(X_train, dtype=np.float32)/np.iinfo(type_im).max,4)
-    Y_train = np.expand_dims(np.array(Y_train, dtype=np.float32)/np.iinfo(type_im).max,4)
+    X_train = np.expand_dims(np.array(X_train, dtype=np.float32),4)
+    Y_train = np.expand_dims(np.array(Y_train, dtype=np.float32),4)
+    for t in range(X_train.shape[0]):
+        X_train[t] = X_train[t]/np.max(X_train[t])
+        Y_train[t] = Y_train[t]/np.max(Y_train[t])
     X_test, Y_test= data_loader.path_to_time_batchs(path_test,nx,ny,TIME=TIME,type_im=type_im,format_im='png',
     code_im1='images',code_im2='masks')
-    X_test = np.expand_dims(np.array(X_test, dtype=np.float32)/np.iinfo(type_im).max,4)
-    Y_test = np.expand_dims(np.array(Y_test, dtype=np.float32)/np.iinfo(type_im).max,4)
+    X_test = np.expand_dims(np.array(X_test, dtype=np.float32),4)
+    Y_test = np.expand_dims(np.array(Y_test, dtype=np.float32),4)
+    for t in range(X_test.shape[0]):
+        X_test[t] = X_test[t]/np.max(X_test[t])
+        Y_test[t] = Y_test[t]/np.max(Y_test[t])
     X_train = np.rollaxis(X_train,3,1)
     Y_train = np.rollaxis(Y_train,3,1)
     X_test = np.rollaxis(X_test,3,1)
@@ -133,12 +145,18 @@ elif model_name=='Unet2D':
     # Data
     X_train, Y_train = data_loader.path_to_batchs(path_train,nx,ny,type_im=type_im,format_im='png',
     code_im1='images',code_im2='masks')
-    X_train = np.array(X_train, dtype=np.float32)/np.iinfo(type_im).max
-    Y_train = np.array(Y_train, dtype=np.float32)/np.iinfo(type_im).max
+    X_train = np.array(X_train, dtype=np.float32)
+    Y_train = np.array(Y_train, dtype=np.float32)
+    for t in range(X_train.shape[0]):
+        X_train[t] = X_train[t]/np.max(X_train[t])
+        Y_train[t] = Y_train[t]/np.max(Y_train[t])
     X_test, Y_test = data_loader.path_to_batchs(path_test,nx,ny,type_im=type_im,format_im='png',
     code_im1='images',code_im2='masks')
-    X_test = np.array(X_test, dtype=np.float32)/np.iinfo(type_im).max
-    Y_test = np.array(Y_test, dtype=np.float32)/np.iinfo(type_im).max
+    X_test = np.array(X_test, dtype=np.float32)
+    Y_test = np.array(Y_test, dtype=np.float32)
+    for t in range(X_test.shape[0]):
+        X_test[t] = X_test[t]/np.max(X_test[t])
+        Y_test[t] = Y_test[t]/np.max(Y_test[t])
     List_id_train = data_loader.array_to_npy(X_train,Y_train,test=False,name=name_save)
     List_id_test = data_loader.array_to_npy(X_test,Y_test,test=True,name=name_save)
     params = {'dim': (nx,ny,1),

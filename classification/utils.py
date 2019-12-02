@@ -179,19 +179,26 @@ import imageio
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 20, 5, 1)
-        self.conv2 = nn.Conv2d(20, 50, 5, 1)
-        self.fc1 = nn.Linear(42050, 500)
+        self.conv1 = nn.Conv2d(1, 10, kernel_size = 5, stride=1, padding=2, dilation=1)
+        self.conv2 = nn.Conv2d(10, 20, kernel_size = 5, stride=1, padding=2, dilation=1)
+        self.conv3 = nn.Conv2d(20, 30, kernel_size = 5, stride=1, padding=2, dilation=1)
+        self.fc1 = nn.Linear(16*16*30, 500)
         self.fc2 = nn.Linear(500, 4)
 
     def forward(self, x):
         x = torch.squeeze(x,0)
         x = F.relu(self.conv1(x))
         x = F.max_pool2d(x, 2, 2)
+        # x = nn.Dropout(p=0.5)(x)
         x = F.relu(self.conv2(x))
         x = F.max_pool2d(x, 2, 2)
+        # x = nn.Dropout(p=0.5)(x)
+        x = F.relu(self.conv3(x))
+        x = F.max_pool2d(x, 2, 2)
+        # x = nn.Dropout(p=0.5)(x)
         x = x.view(-1, self.num_flat_features(x))
         x = F.relu(self.fc1(x))
+        # x = nn.Dropout(p=0.5)(x)
         x = x.view(-1, self.num_flat_features(x))
         x = self.fc2(x)
         return F.softmax(x, dim=1)
@@ -218,21 +225,24 @@ def train(model, device, train_loader, test_loader, optimizer, epoch, nit=100, n
 
         optimizer.zero_grad()
         output = model(dataloc)
-        loss = F.binary_cross_entropy(output,targetloc)
+        loss = nn.BCELoss()(output,targetloc)
         loss.backward()
         optimizer.step()
         if batch_idx % 50 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx, nit,
                 100. * batch_idx / nit, loss.item()))
+
+    loss_train = loss.item()
     # # Test
     randi = np.random.randint(0,data_test.shape[0],size=nbatch)
     dataloc_test, targetloc_test = data_test[randi,:], target_test[randi,:]
     dataloc_test.to(device)
     targetloc_test.to(device)
     output = model(dataloc_test)
-    loss = F.binary_cross_entropy(output,targetloc_test)
-    print('Test loss: {:.6f}'.format(loss.item()))
+    loss_test = nn.BCELoss()(output,targetloc_test)
+    print('Test loss: {:.6f}'.format(loss_test.item()))
+    return loss_train, loss_test
 
 
 

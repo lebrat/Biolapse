@@ -487,6 +487,7 @@ class Widget(QWidget):
 					phase_pred, im_crop_list, _, im_final = im2phase(self.im_nn,np.zeros(1),self.masks,max_speed_disp=self.speed,max_volume_var=self.volume,minimalSize=100,nx_crop=128,ny_crop=128,save_out=True,step=self.step)
 				self.im = im_final
 				updateImage()
+				tmp_fold = 'Data' # dir_file
 				for i in range(len(im_crop_list)):
 					for j in range(len(im_crop_list[i])):
 						tmp = im_crop_list[i][j]
@@ -495,29 +496,29 @@ class Widget(QWidget):
 							tmp = im_crop_list2[i][j]
 							tmpim2 = np.array(255*(tmp-np.min(tmp))/(np.max(tmp)-np.min(tmp)),dtype=np.uint8)
 						if phase_pred[i][j]==0:
-							if not os.path.exists(os.path.join(dir_file,'Biolapse','outputs','G',file_name,str(i).zfill(5))):
-								os.makedirs(os.path.join(dir_file,'Biolapse','outputs','G',file_name,str(i).zfill(5)))
-							imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','G',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
+							if not os.path.exists(os.path.join(tmp_fold,'Biolapse','outputs','G',file_name,str(i).zfill(5))):
+								os.makedirs(os.path.join(tmp_fold,'Biolapse','outputs','G',file_name,str(i).zfill(5)))
+							imageio.imsave(os.path.join(tmp_fold,'Biolapse','outputs','G',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
 							if self.secondChannel:
-								imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','G',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
+								imageio.imsave(os.path.join(tmp_fold,'Biolapse','outputs','G',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
 						if phase_pred[i][j]==1:
-							if not os.path.exists(os.path.join(dir_file,'Biolapse','outputs','earlyS',file_name,str(i).zfill(5))):
-								os.makedirs(os.path.join(dir_file,'Biolapse','outputs','earlyS',file_name,str(i).zfill(5)))
-							imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','earlyS',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
+							if not os.path.exists(os.path.join(tmp_fold,'Biolapse','outputs','earlyS',file_name,str(i).zfill(5))):
+								os.makedirs(os.path.join(tmp_fold,'Biolapse','outputs','earlyS',file_name,str(i).zfill(5)))
+							imageio.imsave(os.path.join(tmp_fold,'Biolapse','outputs','earlyS',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
 							if self.secondChannel:
-								imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','earlyG',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
+								imageio.imsave(os.path.join(tmp_fold,'Biolapse','outputs','earlyG',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
 						if phase_pred[i][j]==2:
-							if not os.path.exists(os.path.join(dir_file,'Biolapse','outputs','midS',file_name,str(i).zfill(5))):
-								os.makedirs(os.path.join(dir_file,'Biolapse','outputs','midS',file_name,str(i).zfill(5)))
-							imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','midS',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
+							if not os.path.exists(os.path.join(tmp_fold,'Biolapse','outputs','midS',file_name,str(i).zfill(5))):
+								os.makedirs(os.path.join(tmp_fold,'Biolapse','outputs','midS',file_name,str(i).zfill(5)))
+							imageio.imsave(os.path.join(tmp_fold,'Biolapse','outputs','midS',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
 							if self.secondChannel:
-								imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','midS',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
+								imageio.imsave(os.path.join(tmp_fold,'Biolapse','outputs','midS',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
 						if phase_pred[i][j]==3:
-							if not os.path.exists(os.path.join(dir_file,'Biolapse','outputs','lateS',file_name,str(i).zfill(5))):
-								os.makedirs(os.path.join(dir_file,'Biolapse','outputs','lateS',file_name,str(i).zfill(5)))
-							imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','lateS',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
+							if not os.path.exists(os.path.join(tmp_fold,'Biolapse','outputs','lateS',file_name,str(i).zfill(5))):
+								os.makedirs(os.path.join(tmp_fold,'Biolapse','outputs','lateS',file_name,str(i).zfill(5)))
+							imageio.imsave(os.path.join(tmp_fold,'Biolapse','outputs','lateS',file_name,str(i).zfill(5),'image_'+str(j).zfill(5)+'.png'),tmpim)
 							if self.secondChannel:
-								imageio.imsave(os.path.join(dir_file,'Biolapse','outputs','lateS',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
+								imageio.imsave(os.path.join(tmp_fold,'Biolapse','outputs','lateS',file_name,str(i).zfill(5),'image2_'+str(j).zfill(5)+'.png'),tmpim2)
 
 				
 				print('Classification finished')

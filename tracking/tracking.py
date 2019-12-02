@@ -15,13 +15,30 @@ The cost function CF is defined by:
 .......
 
 """
-def argmin_CF(localCells,barycenter):
+def argmin_CF(localCells,barycenter,vol,gamma):
 	minCost = np.inf
 	indexMin = -1		
 	if len(localCells)==0:
 		print('No mask found.')
 	for ind,elmt in enumerate(localCells):
-		cost = np.linalg.norm(elmt[1] - barycenter)
+		l1 = np.linalg.norm(elmt[1] - barycenter) # distance between barycenter
+		l2 = np.linalg.norm(float(elmt[2])-float(vol))/float(vol)
+		cost = gamma[0]*l1 + gamma[1]*l2
+		if cost < minCost:
+			indexMin = ind
+			minCost = cost
+	return indexMin, minCost
+
+
+
+def argmin_first(localCells,barycenter):
+	minCost = np.inf
+	indexMin = -1		
+	if len(localCells)==0:
+		print('No mask found.')
+	for ind,elmt in enumerate(localCells):
+		l1 = np.linalg.norm(elmt[1] - barycenter) # distance between barycenter
+		cost = l1
 		if cost < minCost:
 			indexMin = ind
 			minCost = cost
@@ -62,7 +79,7 @@ Outputs:
  - im_crop: sequence of crop from the image centered around the region of interest.
  - m_crop2: sequence of crop from another channel from original image, if exists, centered around the region of interest.
 """
-def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progressbar, minimalSize=25):
+def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progressbar, minimalSize=25, gamma=[0.5,0.5]):
 	if len(im_channel.shape) == 1:
 		secondChannel = False
 	else:
@@ -89,8 +106,9 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 	max_y = np.zeros(finish-imageStart+1)
 
 	localCells,compo = find_connected_components(masks[crtImage],minimalSize) # Detect connected components
-	indexMin = argmin_CF(localCells,barycenter) # Compute argmin CF
+	indexMin = argmin_first(localCells,barycenter) # Compute argmin CF
 	maskFinal[np.where(compo==localCells[indexMin][0])] = 1 # take only mask of interest
+	volume = np.sum(maskFinal)
 	
 	# Select region of interest to save crops
 	delta = 2
@@ -105,16 +123,47 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 	maskFinal_[crtImage] = maskFinal
 	# Repeat the operation for each time step
 	# progressbar.setValue(crtImage)
+	
+	## compute outputs
+	cpt_im = 0
+	max_x_axis = np.max(max_x-min_x)
+	max_y_axis = np.max(max_y-min_y)
+	add_x = max_x_axis - (max_x[cpt_im]-min_x[cpt_im])
+	add_y = max_y_axis - (max_y[cpt_im]-min_y[cpt_im])
+	x_l = int(min_x[cpt_im]-np.floor(add_x/2))
+	x_u = int(max_x[cpt_im]+np.ceil(add_x/2))
+	y_l = int(min_y[cpt_im]-np.floor(add_y/2))
+	y_u = int(max_y[cpt_im]+np.ceil(add_y/2))
+	if x_l < 0:
+		x_u -= x_l
+		x_l = 0
+	if y_l < 0:
+		y_u -= y_l
+		y_l = 0
+	if x_u >nx_mask-1:
+		x_l -= x_u - (nx_mask -1)
+		x_u = nx_mask-1
+	if y_u >ny_mask-1:
+		y_l -= y_u - (ny_mask -1)
+		y_u = ny_mask-1
+	im_crop[crtImage] = im[crtImage,x_l:x_u,y_l:y_u]
+	mask_crop[crtImage] = maskFinal[x_l:x_u,y_l:y_u]
+	if secondChannel:
+		im_crop2[crtImage] = im_channel[crtImage,x_l:x_u,y_l:y_u]
+	cpt_im += 1
+
+	cost = np.zeros(finish-imageStart)
 	while crtImage < finish :
 		crtImage += 1
-		cpt_im += 1
 		barycenter = np.array(localCells[indexMin][1]) # restart from barycenter of previous mask.
 		DictBar[crtImage] = barycenter.copy()
 
 		maskFinal = np.zeros_like(masks[crtImage])
 		localCells,compo = find_connected_components(masks[crtImage],minimalSize) # Detect connected components
-		indexMin = argmin_CF(localCells,barycenter) # Compute argmin CF
+		indexMin, c = argmin_CF(localCells,barycenter,volume,gamma) # Compute argmin CF
 		maskFinal[np.where(compo==localCells[indexMin][0])] = 1 # take only mask of interest
+		volume = np.sum(maskFinal)
+		cost[crtImage-1]=c
 
 		# selct image focus
 		delta = 2
@@ -128,11 +177,6 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 		im_out[crtImage] = np.dot(draw_border(maskFinal,im[crtImage].astype(np.uint8)), [0.299, 0.587, 0.144])
 		maskFinal_[crtImage] = maskFinal
 
-		# progressbar.setValue(crtImage)
-	cpt_im = 0
-	max_x_axis = np.max(max_x-min_x)
-	max_y_axis = np.max(max_y-min_y)
-	for crtImage in range(imageStart,finish+1):
 		add_x = max_x_axis - (max_x[cpt_im]-min_x[cpt_im])
 		add_y = max_y_axis - (max_y[cpt_im]-min_y[cpt_im])
 		x_l = int(min_x[cpt_im]-np.floor(add_x/2))
@@ -151,17 +195,11 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 		if y_u >ny_mask-1:
 			y_l -= y_u - (ny_mask -1)
 			y_u = ny_mask-1
-
-		barycenter = DictBar[crtImage]
-		maskFinal = np.zeros_like(masks[crtImage])
-		localCells,compo = find_connected_components(masks[crtImage],minimalSize) # Detect connected components
-		indexMin = argmin_CF(localCells,barycenter) # Compute argmin CF
-		maskFinal[np.where(compo==localCells[indexMin][0])] = 1 # take only mask of interest
-
 		# import ipdb; ipdb.set_trace()
 		im_crop[crtImage] = im[crtImage,x_l:x_u,y_l:y_u]
 		mask_crop[crtImage] = maskFinal[x_l:x_u,y_l:y_u]
 		if secondChannel:
 			im_crop2[crtImage] = im_channel[crtImage,x_l:x_u,y_l:y_u]
 		cpt_im += 1
+
 	return im_out.astype(np.uint8), DictBar, mask_crop, im_crop, im_crop2, maskFinal_

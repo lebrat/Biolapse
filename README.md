@@ -11,6 +11,8 @@ Biolapse is an open source graphical user interface dedicated to segment and tra
 
 This project is written in python 3 and makes use of [TensorFlow](https://www.tensorflow.org/) for the segmenting task and [PyQtGraph](http://pyqtgraph.org/) and [PyQt5](https://pypi.org/project/PyQt5/) for the graphical interface.
 
+![LM Pipeline](workflow.png)
+
 ### Installation
 To install all the prerequisites simply type in your terminal :
 
@@ -27,15 +29,51 @@ to launch the main interface open a terminal in the Biolapse's directory and typ
 ### Tutorial video 
 [![Tutorial](https://img.youtube.com/vi/nomVideo/0.jpg)](https://www.youtube.com/watch?v=nomVideo)
 
-### Traning the neural network
+## Segmentation: traning the neural network
 
-The provided neural network can be retrained on **your** dataset using the command :
+The provided neural network can be retrained on **your** dataset.
+Place the tif images in 
+
+`Data/Acquisitions/Train`
+
+and 
+
+`Data/Acquisitions/Train`
+
+Execute the script **script_preprocess_data** for save the images in png format and to artificially augment the data. Simply use the following command in a terminal :
+
+`python script_preprocess_data.py`
+
+The training of the neural network is then straight forward: 
 
 `python script_train.py`
 
-- Trainning data must be placed at segmentation/Data/png, with images at segmentation/Data/png/train_im and masks at segmentation/Data/png/train/mask.
-- Testing data must be placed at segmentation/Data/png, with images at segmentation/Data/png/test_im and masks at segmentation/Data/png/test/mask. 
-Images and masks must be in png format.
+The neural network used can be changed by affecting the variable **model_name** with **Unet3D,**, **Unet2D** or **LSTM**.
+
+You can finally visualize the training of your neural network with the command : 
+
+`python script_post_process.py`
+
+
+## Classification: labeling training data-set
+
+Use the GUI interfac to label cells.
+
+Launch the GUI in **tracking** directory with 
+
+`python GUI.py`
+
+
+## Classification: training a neural network
+
+In order to run the classification algorithm which determines the phase of the S phase from cropped cells, we need ton train a neural network to return probability of being in each state.
+
+Execute the script in **classification** directory with
+
+`python script_train_classification.py`
+
+to train the neural network autoencoder to predict probability of each state.
+
 
 ### Evaluating the neural network
 

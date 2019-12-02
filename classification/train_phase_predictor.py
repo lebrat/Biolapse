@@ -22,8 +22,12 @@ def train_phase_predictor(im_train,feature_train,im_test,feature_test,save_out=T
 
     model = Net().to(device)
     optimizer = optim.Adam(model.parameters())
+    loss_train = np.zeros(epochs)
+    loss_test = np.zeros(epochs)
     for epoch in range(1, epochs + 1):
-        train(model, device, alldata_train, alldata_test, optimizer, epoch, nit=nit_train, nbatch=nbatch)
+        loss_tr, loss_te = train(model, device, alldata_train, alldata_test, optimizer, epoch, nit=nit_train, nbatch=nbatch)
+        loss_train[epoch-1] = loss_tr
+        loss_test[epoch-1] = loss_te
     # torch.save(model, os.path.join('..','Data','Classification','mytosis_cnn.pt'))
     torch.save(model.state_dict(), os.path.join('..','Data','Classification','mytosis_cnn.pt'))
 
@@ -49,6 +53,7 @@ def train_phase_predictor(im_train,feature_train,im_test,feature_test,save_out=T
             pylab.title('Prediction: '+ str(pred)+' -- True: '+str(tr))
             pylab.savefig(os.path.join('Data','Outputs_nn','test_'+str(i).zfill(5)+'.png'))
 
+    return loss_train, loss_test
 
 
 def main():

@@ -51,8 +51,12 @@ TODO:
 # def resize_im(img, shape):
 # 	return resize(img, shape, mode='constant', preserve_range=True)
 
-# def normalize_im(img):
-# 	return (img-img.min())/(img.max()-img.min())
+def normalize_im(img):
+    denom = (img.max()-img.min())
+    if denom!=0:
+        return (img-img.min())/denom
+    else:
+        return img
 
 
 # """

@@ -15,7 +15,7 @@ def training_generator(model,generator,epochs=1,steps=50,save_name='default',gen
     if not os.path.exists(os.path.join(os.getcwd(),'..','Data','Segmentation','Model')):
         os.makedirs(os.path.join(os.getcwd(),'..','Data','Segmentation','Model'))
 
-    checkpoint = ModelCheckpoint(os.path.join(os.getcwd(),'..','Data','Segmentation','Model','save_name'+'best.hdf5'), monitor='loss', verbose=1, save_best_only=True, mode='auto')
+    checkpoint = ModelCheckpoint(os.path.join(os.getcwd(),'..','Data','Segmentation','Model',save_name+'best.hdf5'), monitor='loss', verbose=1, save_best_only=True, mode='auto')
     # earlystopper = EarlyStopping(patience=50, verbose=1)
     tsboard = TensorBoard(log_dir=os.path.join('tmp','tb'))
     if step_decay ==[]:
@@ -60,7 +60,7 @@ def train_model_array(model,x_train,y_train,batch_size=32,epochs=1,save_name='de
     else:
         reduce_lr = LearningRateScheduler(step_decay)
 
-    checkpoint = ModelCheckpoint(os.path.join(os.getcwd(),'..','Data','Segmentation','Model','save_name'+'best.hdf5'), monitor='loss', verbose=1, save_best_only=True, mode='auto')
+    checkpoint = ModelCheckpoint(os.path.join(os.getcwd(),'..','Data','Segmentation','Model',save_name+'best.hdf5'), monitor='loss', verbose=1, save_best_only=True, mode='auto')
     if x_test!=[]:
         history=model.fit(x=x_train,y=y_train,batch_size=batch_size,epochs=epochs,
           callbacks=[checkpoint,TensorBoard(log_dir='/tmp/tb'),reduce_lr],

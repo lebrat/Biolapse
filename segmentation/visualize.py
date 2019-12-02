@@ -12,7 +12,7 @@ import data_loader
 Display loss and accuracy during training.
 """
 def display_loss(name,save=False):
-	tmp=pickle.load(open(os.getcwd()+'/Data/Information/'+name+'plots.p','rb'))
+	tmp=pickle.load(open(os.path.join('..','Data','Segmentation','Information',name+'plots.p'),'rb'))
 	plt.figure(1)
 	plt.plot(tmp['loss'][2:])
 	plt.plot(tmp['val_loss'][2:])
