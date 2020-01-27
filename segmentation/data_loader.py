@@ -211,8 +211,6 @@ def tif2png(path_, path_to_save, type_im, nx, ny):
 """
 Run through path and aggregate time images into batch of specify size.
 """
-
-
 def path_to_time_batchs(path_fold, nx=128, ny=128, TIME=15, type_im=np.uint8, format_im='png', code_im1='images', code_im2='masks'):
     cpt_serie = 0
     for (fold, subfold, files) in os.walk(path_fold):
@@ -253,8 +251,6 @@ def path_to_time_batchs(path_fold, nx=128, ny=128, TIME=15, type_im=np.uint8, fo
 """
 Run through path and return batch images.
 """
-
-
 def path_to_batchs(path_fold, nx=128, ny=128, type_im=np.uint8, format_im='png', code_im1='images', code_im2='masks'):
     cpt_serie = 0
     for (fold, subfold, files) in os.walk(path_fold):
@@ -285,6 +281,61 @@ def path_to_batchs(path_fold, nx=128, ny=128, type_im=np.uint8, format_im='png',
                 cpt += 1
                 cpt_serie += 1
     print('Data set done!')
+    return X_train, Y_train
+
+"""
+Run through path and return batch images.
+"""
+def path_to_batchsV2(path_fold, nx=128, ny=128, type_im=np.uint8, format_im='png', code_im1='images', code_im2='masks'):
+    cpt_serie = 0
+    for (fold, subfold, files) in os.walk(path_fold):
+        if os.path.basename(fold) == code_im1:
+            cpt_serie += int(len([f for f in files if f.endswith(format_im)]))
+
+    X_train = np.zeros((cpt_serie, nx, ny, 1), dtype=type_im)
+    Y_train = np.zeros((cpt_serie, nx, ny, 1), dtype=type_im)
+    X_train=[]
+    Y_train=[]
+    cpt_serie = 0
+    for (fold, subfold, files) in os.walk(path_fold):
+        if os.path.basename(fold) == code_im1:
+            nb_im = int(len([f for f in files if f.endswith(format_im)]))
+            images_path = sorted([os.path.join(fold, f) for f in files if f.endswith(
+                format_im)], key=utils.stringSplitByNumbers)
+            cpt = 0
+            for i in range(nb_im):
+                img = imageio.imread(images_path[cpt])
+                mask = imageio.imread(
+                    images_path[cpt].replace(code_im1, code_im2))
+                # img = resize(img, (nx, ny), mode='constant',
+                #              preserve_range=True)
+                
+                n1,n2=img.shape
+                if n1//nx==0 or n2//ny==0:
+                    img = resize(img, (nx, ny), mode='constant',
+                                preserve_range=True)
+                    mask = resize(mask, (nx, ny), mode='constant',
+                              preserve_range=True)
+                    mask_tmp=np.array((mask_tmp > 1e-5),dtype=np.float32)
+                    mask = np.array(np.iinfo(type_im).max *
+                                mask_tmp, dtype=type_im)
+                else:
+                    for kx in range(n1//nx):
+                        for ky in range(n2//ny):
+                            X_train.append(img[kx*nx:(kx+1)*nx,ky*ny:(ky+1)*ny])
+                            mask_tmp=mask[kx*nx:(kx+1)*nx,ky*ny:(ky+1)*ny]
+                            mask_tmp=np.array((mask_tmp > 1e-5),dtype=np.float32)
+                            Y_train.append(np.array(np.iinfo(type_im).max *
+                                        mask_tmp, dtype=type_im))
+                            # if mask_tmp.shape[0]!=nx or mask_tmp.shape[1]!=ny:
+                            #     import ipdb; ipdb.set_trace()
+                # X_train[cpt_serie, :, :, 0] = img
+                # Y_train[cpt_serie, :, :, 0] = mask
+                cpt += 1
+                cpt_serie += 1
+    print('Data set done!')
+    X_train=np.expand_dims(np.array(X_train),3)
+    Y_train=np.expand_dims(np.array(Y_train),3)
     return X_train, Y_train
 
 

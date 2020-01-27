@@ -35,6 +35,17 @@ def display_loss(name,save=False):
 	if save:
 		plt.savefig(os.path.join(os.getcwd(),'Outputs',name+'_acc.png'))
 
+## TODO: mettre la valeur custom
+	# plt.figure(3)
+	# plt.plot(tmp['acc'][2:])
+	# plt.plot(tmp['val_acc'][2:])
+	# plt.title('model accuracy: '+name)
+	# plt.ylabel('acc')
+	# plt.xlabel('epoch')
+	# plt.legend(['train', 'test'], loc='upper left')
+	# if save:
+	# 	plt.savefig(os.path.join(os.getcwd(),'Outputs',name+'_acc.png'))
+
 	# plt.figure(3)
 	# plt.plot(tmp['mean_absolute_error'][2:])
 	# plt.plot(tmp['val_mean_absolute_error'][2:])

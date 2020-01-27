@@ -152,7 +152,7 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 		im_crop2[crtImage] = im_channel[crtImage,x_l:x_u,y_l:y_u]
 	cpt_im += 1
 
-	cost = np.zeros(finish-imageStart)
+	# cost = np.zeros(finish-imageStart)
 	while crtImage < finish :
 		crtImage += 1
 		barycenter = np.array(localCells[indexMin][1]) # restart from barycenter of previous mask.
@@ -163,7 +163,7 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 		indexMin, c = argmin_CF(localCells,barycenter,volume,gamma) # Compute argmin CF
 		maskFinal[np.where(compo==localCells[indexMin][0])] = 1 # take only mask of interest
 		volume = np.sum(maskFinal)
-		cost[crtImage-1]=c
+		# cost[crtImage-1]=c
 
 		# selct image focus
 		delta = 2

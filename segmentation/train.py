@@ -77,3 +77,54 @@ def train_model_array(model,x_train,y_train,batch_size=32,epochs=1,save_name='de
     model.save(os.path.join(os.getcwd(),'..','Data','Segmentation','Model',save_name+'.h5'))
     np.save(os.path.join(os.getcwd(),'..','Data','Segmentation','Model',save_name+'time.npy'),elapsed_time)
     return model
+
+# Import all the necessary libraries
+import os
+import datetime
+import glob
+import random
+import sys
+
+import matplotlib.pyplot as plt
+import skimage.io                                     #Used for imshow function
+import skimage.transform                              #Used for resize function
+from skimage.morphology import label                  #Used for Run-Length-Encoding RLE to create final submission
+
+import numpy as np
+import pandas as pd
+
+import keras
+from keras.layers import Input, Dense, Activation, ZeroPadding2D, BatchNormalization, Flatten, Conv2D, Conv2DTranspose
+from keras.layers import AveragePooling2D, MaxPooling2D, Dropout, GlobalMaxPooling2D, GlobalAveragePooling2D, Lambda
+from keras.layers.advanced_activations import LeakyReLU
+from keras.models import load_model, Model
+from keras.preprocessing.image import ImageDataGenerator
+from keras.layers.merge import add, concatenate
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.utils import multi_gpu_model, plot_model
+from keras import backend as K
+import tensorflow as tf
+import sklearn
+from sklearn.model_selection import train_test_split
+# Custom IoU metric
+def mean_iou(y_true, y_pred):
+    prec = []
+    for t in np.arange(0.5, 1.0, 0.05):
+        y_pred_ = tf.to_int32(y_pred > t)
+        score, up_opt = tf.metrics.mean_iou(y_true, y_pred_, 2)
+        K.get_session().run(tf.local_variables_initializer())
+        with tf.control_dependencies([up_opt]):
+            score = tf.identity(score)
+        prec.append(score)
+    return K.mean(K.stack(prec), axis=0)
+
+# Custom loss function
+def dice_coef(y_true, y_pred):
+    smooth = 1.
+    y_true_f = K.flatten(y_true)
+    y_pred_f = K.flatten(y_pred)
+    intersection = K.sum(y_true_f * y_pred_f)
+    return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
+
+def bce_dice_loss(y_true, y_pred):
+    return 0.5 * keras.losses.binary_crossentropy(y_true, y_pred) - dice_coef(y_true, y_pred)

@@ -323,3 +323,53 @@ def Unet2D(input_size = (256,256,1),filters=64):
 
 
     return model
+
+# Design our model architecture here
+def Unet2DBowl(img_width=256, img_height=256):
+    '''
+    Modified from https://keunwoochoi.wordpress.com/2017/10/11/u-net-on-keras-2-0/
+    '''
+    n_ch_exps = [4, 5, 6, 7, 8, 9]   #the n-th deep channel's exponent i.e. 2**n 16,32,64,128,256
+    k_size = (3, 3)                  #size of filter kernel
+    k_init = 'he_normal'             #kernel initializer
+
+    if K.image_data_format() == 'channels_first':
+        ch_axis = 1
+        input_shape = (3, img_width, img_height)
+    elif K.image_data_format() == 'channels_last':
+        ch_axis = 3
+        input_shape = (img_width, img_height, 3)
+
+    # inp = Input(shape=input_shape)
+    inp = Input((img_width,img_height,1))
+    encodeds = []
+
+    # encoder
+    enc = inp
+    print(n_ch_exps)
+    for l_idx, n_ch in enumerate(n_ch_exps):
+        enc = Conv2D(filters=2**n_ch, kernel_size=k_size, activation='relu', padding='same', kernel_initializer=k_init)(enc)
+        enc = Dropout(0.1*l_idx,)(enc)
+        enc = Conv2D(filters=2**n_ch, kernel_size=k_size, activation='relu', padding='same', kernel_initializer=k_init)(enc)
+        encodeds.append(enc)
+        #print(l_idx, enc)
+        if n_ch < n_ch_exps[-1]:  #do not run max pooling on the last encoding/downsampling step
+            enc = MaxPooling2D(pool_size=(2,2))(enc)
+    
+    # decoder
+    dec = enc
+    print(n_ch_exps[::-1][1:])
+    decoder_n_chs = n_ch_exps[::-1][1:]
+    for l_idx, n_ch in enumerate(decoder_n_chs):
+        l_idx_rev = len(n_ch_exps) - l_idx - 2  #
+        dec = Conv2DTranspose(filters=2**n_ch, kernel_size=k_size, strides=(2,2), activation='relu', padding='same', kernel_initializer=k_init)(dec)
+        dec = concatenate([dec, encodeds[l_idx_rev]], axis=ch_axis)
+        dec = Conv2D(filters=2**n_ch, kernel_size=k_size, activation='relu', padding='same', kernel_initializer=k_init)(dec)
+        dec = Dropout(0.1*l_idx)(dec)
+        dec = Conv2D(filters=2**n_ch, kernel_size=k_size, activation='relu', padding='same', kernel_initializer=k_init)(dec)
+
+    outp = Conv2DTranspose(filters=1, kernel_size=k_size, activation='sigmoid', padding='same', kernel_initializer='glorot_normal')(dec)
+
+    model = Model(inputs=[inp], outputs=[outp])
+    
+    return model
