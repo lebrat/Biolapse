@@ -46,142 +46,212 @@ Output:
 """
 
 ## Parameters
-epoch = 250
+epoch = 30
 lr = 1e-1 
 momentum = 0.8
 decay = 1e-6
-steps_per_epoch = 100
-batch_size = 2
-type_im = np.uint16
+steps_per_epoch = 5 # number of time the data are used
+batch_size = 4
+type_im = np.uint8
 nx = ny = 128
 TIME = 10
-loss_custom=False
 
-path_train = '../Data/Segmentation/Train'
-path_test = '../Data/Segmentation/Test'
+path_train2D = '../Data/Segmentation/Train2D'
+path_test2D = '../Data/Segmentation/Test2D'
+path_train3D = '../Data/Segmentation/Train3D'
+path_test3D = '../Data/Segmentation/Test3D'
 
-name_save_list = ['nn_XP_Unet3D','nn_XP_Unet2D','nn_XP_LSTM']
-model_name_list = ['Unet3D', 'Unet2D', 'LSTM']
+name_save_list = ['nn_XP_Unet3D','nn_XP_Unet3D_crop','nn_XP_LSTM','nn_Unet2D_bowl_crop']
+model_name_list = ['Unet3D','Unet3Dcrop', 'LSTM','Unet2D_bowl_crop']
+# name_save_list = ['nn_Unet2D_bowl_crop']
+# model_name_list = ['Unet2D_bowl_crop']
+name_save_list = ['nn_XP_Unet3D','nn_XP_Unet3D_crop']
+model_name_list = ['Unet3D','Unet3Dcrop']
 tim = []
-for loss_custom in [True, False]:
-    for i in range(len(model_name_list)):
-        model_name = model_name_list[i]+"LossCustom"+str(loss_custom)
-        name_save = name_save_list[i]+"LossCustom"+str(loss_custom)
+for i in range(len(model_name_list)):
+    model_name = model_name_list[i]
+    name_save = name_save_list[i]
 
-        if model_name=='Unet3D':
-            # Data
-            X_train, Y_train = data_loader.path_to_time_batchs(path_train,nx,ny,TIME=TIME,type_im=type_im,format_im='png',
-            code_im1='images',code_im2='masks')
-            X_train = np.expand_dims(np.array(X_train, dtype=np.float32),4)
-            Y_train = np.expand_dims(np.array(Y_train, dtype=np.float32),4)
-            for t in range(X_train.shape[0]):
+    if model_name=='Unet3D':
+        # Data
+        X_train, Y_train = data_loader.path_to_time_batchs(path_train3D,nx,ny,TIME=TIME,type_im=type_im,format_im='png',
+        code_im1='images',code_im2='masks')
+        X_train = np.expand_dims(np.array(X_train, dtype=np.float32),4)
+        Y_train = np.expand_dims(np.array(Y_train, dtype=np.float32),4)
+        # for t in range(X_train.shape[0]):
+        #     X_train[t] = X_train[t]/np.max(X_train[t])
+        #     Y_train[t] = Y_train[t]/np.max(Y_train[t])
+        X_train = X_train/255
+        Y_train = Y_train/255
+        X_test, Y_test= data_loader.path_to_time_batchs(path_test3D,nx,ny,TIME=TIME,type_im=type_im,format_im='png',
+        code_im1='images',code_im2='masks')
+        X_test = np.expand_dims(np.array(X_test, dtype=np.float32),4)
+        Y_test = np.expand_dims(np.array(Y_test, dtype=np.float32),4)
+        X_test = X_test/255
+        Y_test = Y_test/255
+        # for t in range(X_test.shape[0]):
+        #     X_test[t] = X_test[t]/np.max(X_test[t])
+        #     Y_test[t] = Y_test[t]/np.max(Y_test[t])
+        List_id_train = data_loader.array_to_npy(X_train,Y_train,test=False,name=name_save)
+        List_id_test = data_loader.array_to_npy(X_test,Y_test,test=True,name=name_save)
+        params = {'dim': (nx,ny,TIME,1),
+                'batch_size': batch_size,
+                'n_channels': 1,
+                'shuffle': True,
+                'name' : name_save}
+        generator_train = data_loader.DataGenerator3D(List_id_train, **params)
+        generator_test = data_loader.DataGenerator3D(List_id_test, **params)
+        # Model
+        # Change model parameters here
+        net = model.unet_model_3d(input_shape=(nx,ny,TIME,1), pool_size=(2, 2, 1), n_labels=1, deconvolution=False,
+                        depth=4, n_base_filters=16, include_label_wise_dice_coefficients=False, metrics='mse',
+                        batch_normalization=True, activation_name="sigmoid")
+    elif model_name=='Unet3Dcrop':
+        # Data
+        X_train, Y_train = data_loader.path_to_time_batchs_crop(path_train3D,nx,ny,TIME=TIME,type_im=type_im,format_im='png',
+        code_im1='images',code_im2='masks')
+        X_train = np.expand_dims(np.array(X_train, dtype=np.float32),4)
+        Y_train = np.expand_dims(np.array(Y_train, dtype=np.float32),4)
+        X_train[t] = X_train/255
+        Y_train[t] = Y_train/255
+        # for t in range(X_train.shape[0]):
+        #     X_train[t] = X_train[t]/np.max(X_train[t])
+        #     Y_train[t] = Y_train[t]/np.max(Y_train[t])
+        X_test, Y_test= data_loader.path_to_time_batchs_crop(path_test3D,nx,ny,TIME=TIME,type_im=type_im,format_im='png',
+        code_im1='images',code_im2='masks')
+        X_test = np.expand_dims(np.array(X_test, dtype=np.float32),4)
+        Y_test = np.expand_dims(np.array(Y_test, dtype=np.float32),4)
+        X_test = X_test/255
+        Y_test = Y_test/255
+        # for t in range(X_test.shape[0]):
+        #     X_test[t] = X_test[t]/np.max(X_test[t])
+        #     Y_test[t] = Y_test[t]/np.max(Y_test[t])
+        List_id_train = data_loader.array_to_npy(X_train,Y_train,test=False,name=name_save)
+        List_id_test = data_loader.array_to_npy(X_test,Y_test,test=True,name=name_save)
+        params = {'dim': (nx,ny,TIME,1),
+                'batch_size': batch_size,
+                'n_channels': 1,
+                'shuffle': True,
+                'name' : name_save}
+        generator_train = data_loader.DataGenerator3D(List_id_train, **params)
+        generator_test = data_loader.DataGenerator3D(List_id_test, **params)
+        # Model
+        # Change model parameters here
+        net = model.unet_model_3d_crop(nx,ny,TIME)
+    elif model_name=='LSTM':
+        # Data
+        X_train, Y_train = data_loader.path_to_time_batchs(path_train3D,nx,ny,TIME=TIME,type_im=type_im,format_im='png',
+        code_im1='images',code_im2='masks')
+        X_train = np.expand_dims(np.array(X_train, dtype=np.float32),4)
+        Y_train = np.expand_dims(np.array(Y_train, dtype=np.float32),4)
+        for t in range(X_train.shape[0]):
+            X_train[t] = X_train[t]/np.max(X_train[t])
+            Y_train[t] = Y_train[t]/np.max(Y_train[t])
+        X_test, Y_test= data_loader.path_to_time_batchs(path_test3D,nx,ny,TIME=TIME,type_im=type_im,format_im='png',
+        code_im1='images',code_im2='masks')
+        X_test = np.expand_dims(np.array(X_test, dtype=np.float32),4)
+        Y_test = np.expand_dims(np.array(Y_test, dtype=np.float32),4)
+        for t in range(X_test.shape[0]):
+            X_test[t] = X_test[t]/np.max(X_test[t])
+            Y_test[t] = Y_test[t]/np.max(Y_test[t])
+        X_train = np.rollaxis(X_train,3,1)
+        Y_train = np.rollaxis(Y_train,3,1)
+        X_test = np.rollaxis(X_test,3,1)
+        Y_test = np.rollaxis(Y_test,3,1)
+        List_id_train = data_loader.array_to_npy(X_train,Y_train,test=False,name=name_save)
+        List_id_test = data_loader.array_to_npy(X_test,Y_test,test=True,name=name_save)
+        params = {'dim': (TIME,nx,ny,1),
+                'batch_size': batch_size,
+                'n_channels': 1,
+                'shuffle': True,
+                'name' : name_save}
+        generator_train = data_loader.DataGenerator3D(List_id_train, **params)
+        generator_test = data_loader.DataGenerator3D(List_id_test, **params)
+
+        
+        # Model
+        # Change model parameters here
+        net = model.LSTMNET3((TIME,nx,ny,1),filters=16)
+    elif model_name=='Unet2D':
+        # Data
+        X_train, Y_train = data_loader.path_to_batchs(path_train2D,nx,ny,type_im=type_im,format_im='png',
+        code_im1='images',code_im2='masks')
+        X_train = np.array(X_train, dtype=np.float32)
+        Y_train = np.array(Y_train, dtype=np.float32)
+        for t in range(X_train.shape[0]):
+            X_train[t] = X_train[t]/np.max(X_train[t])
+            Y_train[t] = Y_train[t]/np.max(Y_train[t])
+        X_test, Y_test = data_loader.path_to_batchs(path_test2D,nx,ny,type_im=type_im,format_im='png',
+        code_im1='images',code_im2='masks')
+        X_test = np.array(X_test, dtype=np.float32)
+        Y_test = np.array(Y_test, dtype=np.float32)
+        # for t in range(X_test.shape[0]):
+        #     X_test[t] = X_test[t]/np.max(X_test[t])
+        #     Y_test[t] = Y_test[t]/np.max(Y_test[t])
+        # List_id_train = data_loader.array_to_npy(X_train,Y_train,test=False,name=name_save)
+        # List_id_test = data_loader.array_to_npy(X_test,Y_test,test=True,name=name_save)
+        # params = {'dim': (nx,ny,1),
+        #         'batch_size': batch_size,
+        #         'n_channels': 1,
+        #         'shuffle': True,
+        #         'name' : name_save}
+        # generator_train = data_loader.DataGenerator3D(List_id_train, **params)
+        # generator_test = data_loader.DataGenerator3D(List_id_test, **params)
+
+        generator_train, X_augmented_train, Y_augmented_train = utils.get_augmented(X_data=X_train, Y_data=Y_train, batch_size=batch_size)
+        generator_test, X_augmented_test, Y_augmented_test = utils.get_augmented(X_data=X_test, Y_data=Y_test, batch_size=batch_size)
+
+        # Model
+        # Change model parameters here
+        net = model.Unet2D(input_size = (nx,ny,1),filters=16)
+    elif model_name=='Unet2D_bowl_crop':
+        # Data
+        X_train, Y_train = data_loader.path_to_batchs_crop(path_train2D,nx,ny,type_im=type_im,format_im='png',
+        code_im1='images',code_im2='masks')
+        X_train = np.array(X_train, dtype=np.float32)
+        Y_train = np.array(Y_train, dtype=np.float32)
+        for t in range(X_train.shape[0]):
+            if np.max(X_train[t])!=0:
                 X_train[t] = X_train[t]/np.max(X_train[t])
+            if np.max(Y_train[t])!=0:
                 Y_train[t] = Y_train[t]/np.max(Y_train[t])
-            X_test, Y_test= data_loader.path_to_time_batchs(path_test,nx,ny,TIME=TIME,type_im=type_im,format_im='png',
-            code_im1='images',code_im2='masks')
-            X_test = np.expand_dims(np.array(X_test, dtype=np.float32),4)
-            Y_test = np.expand_dims(np.array(Y_test, dtype=np.float32),4)
-            for t in range(X_test.shape[0]):
+        X_test, Y_test = data_loader.path_to_batchs_crop(path_test2D,nx,ny,type_im=type_im,format_im='png',
+        code_im1='images',code_im2='masks')
+        X_test = np.array(X_test, dtype=np.float32)
+        Y_test = np.array(Y_test, dtype=np.float32)
+        for t in range(X_test.shape[0]):
+            if np.max(X_test[t])!=0:
                 X_test[t] = X_test[t]/np.max(X_test[t])
+            if np.max(Y_test[t])!=0:
                 Y_test[t] = Y_test[t]/np.max(Y_test[t])
-            List_id_train = data_loader.array_to_npy(X_train,Y_train,test=False,name=name_save)
-            List_id_test = data_loader.array_to_npy(X_test,Y_test,test=True,name=name_save)
-            params = {'dim': (nx,ny,TIME,1),
-                    'batch_size': batch_size,
-                    'n_channels': 1,
-                    'shuffle': True,
-                    'name' : name_save}
-            generator_train = data_loader.DataGenerator3D(List_id_train, **params)
-            generator_test = data_loader.DataGenerator3D(List_id_test, **params)
-            # Model
-            # Change model parameters here
-            net = model.unet_model_3d(input_shape=(nx,ny,TIME,1), pool_size=(2, 2, 1), n_labels=1, deconvolution=False,
-                            depth=4, n_base_filters=16, include_label_wise_dice_coefficients=False, metrics='mse',
-                            batch_normalization=True, activation_name="sigmoid")
-        elif model_name=='LSTM':
-            # Data
-            X_train, Y_train = data_loader.path_to_time_batchs(path_train,nx,ny,TIME=TIME,type_im=type_im,format_im='png',
-            code_im1='images',code_im2='masks')
-            X_train = np.expand_dims(np.array(X_train, dtype=np.float32),4)
-            Y_train = np.expand_dims(np.array(Y_train, dtype=np.float32),4)
-            for t in range(X_train.shape[0]):
-                X_train[t] = X_train[t]/np.max(X_train[t])
-                Y_train[t] = Y_train[t]/np.max(Y_train[t])
-            X_test, Y_test= data_loader.path_to_time_batchs(path_test,nx,ny,TIME=TIME,type_im=type_im,format_im='png',
-            code_im1='images',code_im2='masks')
-            X_test = np.expand_dims(np.array(X_test, dtype=np.float32),4)
-            Y_test = np.expand_dims(np.array(Y_test, dtype=np.float32),4)
-            for t in range(X_test.shape[0]):
-                X_test[t] = X_test[t]/np.max(X_test[t])
-                Y_test[t] = Y_test[t]/np.max(Y_test[t])
-            X_train = np.rollaxis(X_train,3,1)
-            Y_train = np.rollaxis(Y_train,3,1)
-            X_test = np.rollaxis(X_test,3,1)
-            Y_test = np.rollaxis(Y_test,3,1)
-            List_id_train = data_loader.array_to_npy(X_train,Y_train,test=False,name=name_save)
-            List_id_test = data_loader.array_to_npy(X_test,Y_test,test=True,name=name_save)
-            params = {'dim': (TIME,nx,ny,1),
-                    'batch_size': batch_size,
-                    'n_channels': 1,
-                    'shuffle': True,
-                    'name' : name_save}
-            generator_train = data_loader.DataGenerator3D(List_id_train, **params)
-            generator_test = data_loader.DataGenerator3D(List_id_test, **params)
-            # Model
-            # Change model parameters here
-            net = model.LSTMNET3((TIME,nx,ny,1),filters=16)
-        elif model_name=='Unet2D':
-            # Data
-            X_train, Y_train = data_loader.path_to_batchs(path_train,nx,ny,type_im=type_im,format_im='png',
-            code_im1='images',code_im2='masks')
-            X_train = np.array(X_train, dtype=np.float32)
-            Y_train = np.array(Y_train, dtype=np.float32)
-            for t in range(X_train.shape[0]):
-                X_train[t] = X_train[t]/np.max(X_train[t])
-                Y_train[t] = Y_train[t]/np.max(Y_train[t])
-            X_test, Y_test = data_loader.path_to_batchs(path_test,nx,ny,type_im=type_im,format_im='png',
-            code_im1='images',code_im2='masks')
-            X_test = np.array(X_test, dtype=np.float32)
-            Y_test = np.array(Y_test, dtype=np.float32)
-            for t in range(X_test.shape[0]):
-                X_test[t] = X_test[t]/np.max(X_test[t])
-                Y_test[t] = Y_test[t]/np.max(Y_test[t])
-            List_id_train = data_loader.array_to_npy(X_train,Y_train,test=False,name=name_save)
-            List_id_test = data_loader.array_to_npy(X_test,Y_test,test=True,name=name_save)
-            params = {'dim': (nx,ny,1),
-                    'batch_size': batch_size,
-                    'n_channels': 1,
-                    'shuffle': True,
-                    'name' : name_save}
-            generator_train = data_loader.DataGenerator3D(List_id_train, **params)
-            generator_test = data_loader.DataGenerator3D(List_id_test, **params)
-            # Model
-            # Change model parameters here
-            net = model.Unet2D(input_size = (nx,ny,1),filters=16)
-        else:
-            raise ValueError('Model name not understood: {0}. Must be in {{Unet3D, Unet2D, LSTM}}.'.format(model_name))
-        net.summary()
 
-        # Optimization
-        opt = optimizers.SGD(lr=lr,decay=decay,momentum=momentum)
-        if not(loss_custom):
-            net.compile(optimizer=opt, loss=binary_crossentropy,metrics=['mse', 'acc',utils.mean_iou])
-        else:
-            net.compile(optimizer=opt, loss=utils.bce_dice_loss,metrics=['mse', 'acc',utils.mean_iou])
+        generator_train, X_augmented_train, Y_augmented_train = utils.get_augmented(X_data=X_train, Y_data=Y_train, batch_size=batch_size)
+        generator_test, X_augmented_test, Y_augmented_test = utils.get_augmented(X_data=X_test, Y_data=Y_test, batch_size=batch_size)
 
-        def step_decay(epoch):
-            initial_lrate = lr
-            drop = 0.5
-            epochs_drop = 15.0
-            lrate = initial_lrate * np.math.pow(drop, np.floor((1+epoch)/epochs_drop))
-            return lrate
+        # Model
+        net = model.Unet2D_bowlV2(nx,ny)
+    else:
+        raise ValueError('Model name not understood: {0}. Must be in {{Unet3D, Unet2D, LSTM}}.'.format(model_name))
+    net.summary()
 
-        ## Training
-        t_train = time.time()
-        net = train.training_generator(net,generator_train,epochs=epoch,steps=steps_per_epoch,
-            save_name=name_save,generator_validation=generator_test,step_decay=step_decay)
-        t_train = time.time()-t_train
-        print("Training time: {0}".format(t_train))
-        tim.append(t_train)
-        shutil.rmtree(os.path.join(os.getcwd(),'tmp'),ignore_errors=True)
-        np.save(os.path.join('Data','Information',name_save+'_time.npy'),tim)
+    # Optimization
+    opt = optimizers.SGD(lr=lr,decay=decay,momentum=momentum)
+    # net.compile(optimizer=opt, loss=binary_crossentropy,metrics=['mse', 'acc',utils.mean_iou])
+    net.compile(optimizer=opt, loss=utils.bce_dice_loss,metrics=['mse', 'acc',utils.mean_iou])
+
+    def step_decay(epoch):
+        initial_lrate = lr
+        drop = 0.5
+        epochs_drop = 15.0
+        lrate = initial_lrate * np.math.pow(drop, np.floor((1+epoch)/epochs_drop))
+        return lrate
+
+    ## Training
+    t_train = time.time()
+    net = train.training_generator(net,generator_train,epochs=epoch,steps=steps_per_epoch*len(X_train)/(batch_size),
+        save_name=name_save,generator_validation=generator_test,step_decay=step_decay)
+    t_train = time.time()-t_train
+    print("Training time: {0}".format(t_train))
+    tim.append(t_train)
+    shutil.rmtree(os.path.join(os.getcwd(),'tmp'),ignore_errors=True)
+    np.save(os.path.join('Data','Information',name_save+'_time.npy'),tim)

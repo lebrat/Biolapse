@@ -27,7 +27,7 @@ path_to_save = '../Data/Acquisitions/png/Train/masks'
 data_loader.tif2png(path_folder_tif,path_to_save,type_im,nx,ny)
 
 # Data augmentation
-path_train_save = '../Data/Segmentation/Train/augmentation'
+path_train_save = '../Data/Segmentation/Train3D/augmentation'
 path_train_im = '../Data/Acquisitions/png/Train/images/'
 path_train_mask = '../Data/Acquisitions/png/Train/masks/'
 for dirnames in  os.listdir(path_train_im):
@@ -36,7 +36,7 @@ for dirnames in  os.listdir(path_train_im):
     path_save = os.path.join(path_train_save,dirnames)
     data_loader.augmentation_png(path_imgs,path_masks,path_save, original=True, oneOfTwo=True, reverse=True, reverseOneOfTwo=True,
     rotation1=30, rotation2=150,rotation3=240,rotation4=90,rotation5=290,rotation6=120, rotation7=330)
-path_test_save = '../Data/Segmentation/Test/augmentation'
+path_test_save = '../Data/Segmentation/Test3D/augmentation'
 path_test_im = '../Data/Acquisitions/png/Test/images/'
 path_test_mask = '../Data/Acquisitions/png/Test/masks/'
 for dirnames in  os.listdir(path_test_im):
@@ -48,4 +48,26 @@ for dirnames in  os.listdir(path_test_im):
 
 
 
+
+
+## If no augmentation requiered
+# Data augmentation
+path_train_save = '../Data/Segmentation/Train2D/augmentation'
+path_train_im = '../Data/Acquisitions/png2D/Train/images/'
+path_train_mask = '../Data/Acquisitions/png2D/Train/masks/'
+for dirnames in  os.listdir(path_train_im):
+    path_imgs = os.path.join(path_train_im,dirnames,'*.png')
+    path_masks = os.path.join(path_train_mask,dirnames,'*.png')
+    path_save = os.path.join(path_train_save,dirnames)
+    data_loader.augmentation_png(path_imgs,path_masks,path_save, original=True, oneOfTwo=False, reverse=False, reverseOneOfTwo=False,
+    rotation1=0, rotation2=0,rotation3=0,rotation4=0,rotation5=0,rotation6=0, rotation7=0)
+path_test_save = '../Data/Segmentation/Test2D/augmentation'
+path_test_im = '../Data/Acquisitions/png2D/Test/images/'
+path_test_mask = '../Data/Acquisitions/png2D/Test/masks/'
+for dirnames in  os.listdir(path_test_im):
+    path_imgs = os.path.join(path_test_im,dirnames,'*.png')
+    path_masks = os.path.join(path_test_mask,dirnames,'*.png')
+    path_save = os.path.join(path_test_save,dirnames)
+    data_loader.augmentation_png(path_imgs,path_masks,path_save, original=True, oneOfTwo=False, reverse=False, reverseOneOfTwo=False,
+    rotation1=0, rotation2=0,rotation3=0,rotation4=0,rotation5=0,rotation6=0, rotation7=0)
 

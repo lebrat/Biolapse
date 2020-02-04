@@ -11,7 +11,7 @@ import data_loader
 """
 Display loss and accuracy during training.
 """
-def display_loss(name,save=False):
+def display_loss(name,save=False,custom=False):
 	tmp=pickle.load(open(os.path.join('..','Data','Segmentation','Information',name+'plots.p'),'rb'))
 	plt.figure(1)
 	plt.plot(tmp['loss'][2:])
@@ -35,16 +35,17 @@ def display_loss(name,save=False):
 	if save:
 		plt.savefig(os.path.join(os.getcwd(),'Outputs',name+'_acc.png'))
 
-## TODO: mettre la valeur custom
-	# plt.figure(3)
-	# plt.plot(tmp['acc'][2:])
-	# plt.plot(tmp['val_acc'][2:])
-	# plt.title('model accuracy: '+name)
-	# plt.ylabel('acc')
-	# plt.xlabel('epoch')
-	# plt.legend(['train', 'test'], loc='upper left')
-	# if save:
-	# 	plt.savefig(os.path.join(os.getcwd(),'Outputs',name+'_acc.png'))
+
+	if custom:
+		plt.figure(3)
+		plt.plot(tmp['mean_iou'][2:])
+		plt.plot(tmp['val_mean_iou'][2:])
+		plt.title('model mean iou: '+name)
+		plt.ylabel('mean iou')
+		plt.xlabel('epoch')
+		plt.legend(['train', 'test'], loc='upper left')
+		if save:
+			plt.savefig(os.path.join(os.getcwd(),'Outputs',name+'_meanIOU.png'))
 
 	# plt.figure(3)
 	# plt.plot(tmp['mean_absolute_error'][2:])
@@ -137,7 +138,13 @@ def save_png_list(model, imgs, name='default', thresh=0, format_im=np.uint8):
 			out = np.squeeze(model.predict(np.expand_dims(img,0)))
 		if not os.path.exists(os.path.join('Outputs',name)):
 			os.makedirs(os.path.join('Outputs',name))
-		for t in range(out.shape[2]):
+		# import ipdb; ipdb.set_trace()
+		if len(out.shape)==2:
+			K=1
+			out=np.expand_dims(out,2)
+		else:
+			K=out.shape[2]
+		for t in range(K):
 			tmp = np.array(np.iinfo(format_im).max*(out[:,:,t]-np.min(out[:,:,t]))/(np.max(out[:,:,t])-np.min(out[:,:,t])),dtype=format_im)
 			imageio.imsave(os.path.join('Outputs',name)+'/mask_'+str(cpt).zfill(7)+'.png', tmp)
 			tmp = np.array(np.iinfo(format_im).max*(img[:,:,t]-np.min(img[:,:,t]))/(np.max(img[:,:,t])-np.min(img[:,:,t])),dtype=format_im)
@@ -185,7 +192,12 @@ def save_png_video(model, imgs, name='default', thresh=0, format_im=np.uint8,pos
 			out = np.squeeze(model.predict(np.expand_dims(img,0)))
 		if not os.path.exists(os.path.join('Outputs',name)):
 			os.makedirs(os.path.join('Outputs',name))
-		for t in range(out.shape[2]):
+		if len(out.shape)==2:
+			K=1
+			out=np.expand_dims(out,2)
+		else:
+			K=out.shape[2]
+		for t in range(K):
 			tmp = np.array(np.iinfo(format_im).max*(out[:,:,t]-np.min(out[:,:,t]))/(np.max(out[:,:,t])-np.min(out[:,:,t])),dtype=format_im)
 			imageio.imsave(os.path.join('Outputs',name)+'/'+str(cpt).zfill(7)+'1.png', tmp)
 			tmp = np.array(np.iinfo(format_im).max*(img[:,:,t]-np.min(img[:,:,t]))/(np.max(img[:,:,t])-np.min(img[:,:,t])),dtype=format_im)

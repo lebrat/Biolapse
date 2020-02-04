@@ -135,7 +135,7 @@ for i in range(y):
         plt.title('Mask #{}'.format(pos))
         plt.axis('off')
 #plt.subplots_adjust(wspace=0.1, hspace=0.1)
-plt.show()
+plt.show(False)
 
 # Design our model architecture here
 def keras_model(img_width=256, img_height=256):
@@ -292,7 +292,7 @@ class PlotLosses(Callback):
             plt.legend(loc='center left')
         
         plt.tight_layout()
-        plt.show();
+        plt.show(False);
 
 plot_losses = PlotLosses(figsize=(16, 4))
 
@@ -351,4 +351,4 @@ for i in range(y):
         plt.imshow(np.squeeze(preds_val_t[pos]))
         plt.title('Predict')
         plt.axis('off')
-plt.show()
+plt.show(False)

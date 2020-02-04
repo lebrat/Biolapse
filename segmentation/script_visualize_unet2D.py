@@ -11,12 +11,13 @@ nx = ny = 128
 img_width=img_height=nx
 
 path_test = '../Data/Segmentation/Test'
+path_test = '../Data/Segmentation/Test/augmentation/SUM_PCNA_74_3Dguassianblur/Original/'
 
 # name_save = 'nn_unet2D'
 # model_name = 'Unet2D' # 'LSTM'
 
 # Data
-X_test, Y_test = data_loader.path_to_batchsV2(path_test,nx,ny,type_im=type_im,format_im='png',
+X_test, Y_test = data_loader.path_to_batchs(path_test,256,256,type_im=type_im,format_im='png',
 code_im1='images',code_im2='masks')
 X_test = np.array(X_test, dtype=np.float32)
 Y_test = np.array(Y_test, dtype=np.float32)
@@ -119,6 +120,7 @@ def reconstruction(model,imgs,nx=128,ny=128,thresh=0.5):
                     preds_val = model.predict(img, verbose=1)
                     preds_val_t = (preds_val > thresh)
                     mask[kx*nx:(kx+1)*nx,ky*ny:(ky+1)*ny]=np.squeeze(preds_val_t)
+                    im_save[kx*nx:(kx+1)*nx,ky*ny:(ky+1)*ny]=np.squeeze(img)
             im_list.append(im_save)
             mask_list.append(mask)
     return im_list,mask_list
@@ -128,7 +130,7 @@ def reconstruction(model,imgs,nx=128,ny=128,thresh=0.5):
 model = keras_model(img_width=img_width, img_height=img_height)
 model.load_weights("model-weights.hdf5")
 
-im_list,mask_list=reconstruction(model,X_test[:100],nx,ny,thresh=0.005)
+im_list,mask_list=reconstruction(model,X_test[:100],nx,ny,thresh=0.5)
 mask=np.array(mask_list)
 imgs=np.array(im_list)
 
@@ -148,6 +150,8 @@ plt.figure(figsize=(20,16))
 x, y = 16,3
 for i in range(y):  
     for j in range(x):
+        if i*x+j>=X_test.shape[0]:
+            break
         # train image
         plt.subplot(y*3, x, i*3*x+j+1)
         pos = i*x+j
@@ -162,4 +166,18 @@ for i in range(y):
         plt.imshow(np.squeeze(mask[pos]))
         # plt.title('Predict')
         plt.axis('off')
+    if i*x+j>=X_test.shape[0]:
+        break
 plt.show()
+
+import imageio
+import os
+if not os.path.exists(os.path.join('Outputs','Unet2DCrop')):
+    os.makedirs(os.path.join('Outputs','Unet2DCrop'))
+for l in range(imgs.shape[0]):
+    tmp=imgs[l]
+    tmp=np.array(255*((tmp-np.min(tmp))/(np.max(tmp)-np.min(tmp))),dtype=np.uint8)
+    imageio.imsave(os.path.join('Outputs','Unet2DCrop')+'/original_'+str(l).zfill(7)+'.png', tmp)
+    tmp=mask[l]
+    tmp=np.array(255*((tmp-np.min(tmp))/(np.max(tmp)-np.min(tmp))),dtype=np.uint8)
+    imageio.imsave(os.path.join('Outputs','Unet2DCrop')+'/mask_'+str(l).zfill(7)+'.png', tmp)

@@ -247,6 +247,63 @@ def path_to_time_batchs(path_fold, nx=128, ny=128, TIME=15, type_im=np.uint8, fo
     print('Data set done!')
     return X_train, Y_train
 
+"""
+Same function as above but returns take several crops in the full image instead of resizing it.
+"""
+def path_to_time_batchs_crop(path_fold, nx=128, ny=128, TIME=15, type_im=np.uint8, format_im='png', code_im1='images', code_im2='masks'):
+    cpt_serie = 0
+    for (fold, subfold, files) in os.walk(path_fold):
+        if os.path.basename(fold) == code_im1:
+            nb_serie = int(
+                len([f for f in files if f.endswith(format_im)])/TIME)
+            cpt_serie += nb_serie
+    X_train=[]
+    Y_train=[]
+    for (fold, subfold, files) in os.walk(path_fold):
+        if os.path.basename(fold) == code_im1:
+            nb_serie = int(
+                len([f for f in files if f.endswith(format_im)])/TIME)
+            images_path = sorted([os.path.join(fold, f) for f in files if f.endswith(
+                format_im)], key=utils.stringSplitByNumbers)
+            cpt = 0
+            for i in range(nb_serie):
+                img = imageio.imread(images_path[cpt])
+                n1,n2=img.shape
+                K=np.maximum(1,(n1//nx))*np.maximum(1,(n2//ny))
+                X_tmp=np.zeros((K,nx,ny,TIME))
+                Y_tmp=np.zeros((K,nx,ny,TIME))
+                for t in range(TIME):
+                    img = imageio.imread(images_path[cpt])
+                    mask = imageio.imread(
+                        images_path[cpt].replace(code_im1, code_im2))
+                    if n1//nx==0 or n2//ny==0:
+                        mask = resize(mask, (nx, ny), mode='constant',
+                                preserve_range=True)
+                        mask_tmp=np.array((mask_tmp > 1e-5),dtype=np.float32)
+                        X_tmp[0,:,:,t]=resize(img, (nx, ny), mode='constant',
+                                    preserve_range=True)
+                        Y_tmp[0,:,:,t]=np.array(np.iinfo(type_im).max *
+                                    mask_tmp, dtype=type_im)
+                    else:
+                        k=0
+                        for kx in range(n1//nx):
+                            for ky in range(n2//ny):
+                                mask_tmp=mask[kx*nx:(kx+1)*nx,ky*ny:(ky+1)*ny]
+                                mask_tmp=np.array((mask_tmp > 1e-5),dtype=np.float32)
+                                X_tmp[k,:,:,t]=img[kx*nx:(kx+1)*nx,ky*ny:(ky+1)*ny]
+                                Y_tmp[k,:,:,t]=np.array(np.iinfo(type_im).max *
+                                            mask_tmp, dtype=type_im)
+                                k+=1
+                    cpt += 1
+                for k in range(K):
+                    X_train.append(X_tmp[k,:,:,:])
+                    Y_train.append(Y_tmp[k,:,:,:])
+                # cpt_serie += 1
+    X_train=np.array(X_train)
+    Y_train=np.array(Y_train)
+    print('Data set done!')
+    return X_train, Y_train
+
 
 """
 Run through path and return batch images.
@@ -284,16 +341,13 @@ def path_to_batchs(path_fold, nx=128, ny=128, type_im=np.uint8, format_im='png',
     return X_train, Y_train
 
 """
-Run through path and return batch images.
+Same function as above but returns take several crops in the full image instead of resizing it.
 """
-def path_to_batchsV2(path_fold, nx=128, ny=128, type_im=np.uint8, format_im='png', code_im1='images', code_im2='masks'):
+def path_to_batchs_crop(path_fold, nx=128, ny=128, type_im=np.uint8, format_im='png', code_im1='images', code_im2='masks'):
     cpt_serie = 0
     for (fold, subfold, files) in os.walk(path_fold):
         if os.path.basename(fold) == code_im1:
             cpt_serie += int(len([f for f in files if f.endswith(format_im)]))
-
-    X_train = np.zeros((cpt_serie, nx, ny, 1), dtype=type_im)
-    Y_train = np.zeros((cpt_serie, nx, ny, 1), dtype=type_im)
     X_train=[]
     Y_train=[]
     cpt_serie = 0
@@ -307,9 +361,6 @@ def path_to_batchsV2(path_fold, nx=128, ny=128, type_im=np.uint8, format_im='png
                 img = imageio.imread(images_path[cpt])
                 mask = imageio.imread(
                     images_path[cpt].replace(code_im1, code_im2))
-                # img = resize(img, (nx, ny), mode='constant',
-                #              preserve_range=True)
-                
                 n1,n2=img.shape
                 if n1//nx==0 or n2//ny==0:
                     img = resize(img, (nx, ny), mode='constant',
@@ -327,10 +378,6 @@ def path_to_batchsV2(path_fold, nx=128, ny=128, type_im=np.uint8, format_im='png
                             mask_tmp=np.array((mask_tmp > 1e-5),dtype=np.float32)
                             Y_train.append(np.array(np.iinfo(type_im).max *
                                         mask_tmp, dtype=type_im))
-                            # if mask_tmp.shape[0]!=nx or mask_tmp.shape[1]!=ny:
-                            #     import ipdb; ipdb.set_trace()
-                # X_train[cpt_serie, :, :, 0] = img
-                # Y_train[cpt_serie, :, :, 0] = mask
                 cpt += 1
                 cpt_serie += 1
     print('Data set done!')
@@ -342,8 +389,6 @@ def path_to_batchsV2(path_fold, nx=128, ny=128, type_im=np.uint8, format_im='png
 """
 Rewrite png images into npy array for faster (??) processing.
 """
-
-
 def array_to_npy(x, y, test=False, name='default'):
     if not os.path.exists(os.path.join(os.getcwd(), 'tmp')):
         os.makedirs(os.path.join(os.getcwd(), 'tmp'))

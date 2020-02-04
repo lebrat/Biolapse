@@ -4,12 +4,65 @@ from keras.engine import Input, Model
 from keras.layers import Conv3D, MaxPooling3D, UpSampling3D, Activation, BatchNormalization, PReLU, Deconvolution3D
 from keras.layers import ConvLSTM2D, TimeDistributed,  merge, Conv2D
 from keras.layers.core import Dropout, Lambda
-from keras.layers.convolutional import Convolution2D, UpSampling2D, Conv2DTranspose
+from keras.layers.convolutional import Convolution2D, UpSampling2D, Conv2DTranspose, Convolution3D, Conv3DTranspose
 from keras.layers.pooling import MaxPooling2D
 from keras.layers.merge import concatenate,Add
 from keras.callbacks import ModelCheckpoint
 import numpy as np
 import keras.optimizers
+
+
+"""
+Based on the 2D unet implemented in https://www.kaggle.com/dingli/keras-u-net-for-nuclei-segmentation
+"""
+def unet_model_3d_crop(img_width=128, img_height=128, TIME=10):
+    '''
+    Modified from https://keunwoochoi.wordpress.com/2017/10/11/u-net-on-keras-2-0/
+    '''
+    # n_ch_exps = [4, 5, 6, 7, 8, 9]   #the n-th deep channel's exponent i.e. 2**n 16,32,64,128,256
+    n_ch_exps = [3,4,5,6,7]   #the n-th deep channel's exponent i.e. 2**n 16,32,64,128,256
+    k_size = (3, 3, 3)                  #size of filter kernel
+    k_init = 'he_normal'             #kernel initializer
+
+    if K.image_data_format() == 'channels_first':
+        ch_axis = 1
+        input_shape = (1, TIME, img_width, img_height)
+    elif K.image_data_format() == 'channels_last':
+        ch_axis = 4
+        input_shape = (img_width, img_height, TIME, 1)
+
+    inp = Input(shape=input_shape)
+    encodeds = []
+
+    # encoder
+    enc = inp
+    print(n_ch_exps)
+    for l_idx, n_ch in enumerate(n_ch_exps):
+        enc = Conv3D(filters=2**n_ch, kernel_size=k_size, activation='relu', padding='same', kernel_initializer=k_init)(enc)
+        enc = Dropout(0.15*l_idx,)(enc)
+        enc = Conv3D(filters=2**n_ch, kernel_size=k_size, activation='relu', padding='same', kernel_initializer=k_init)(enc)
+        encodeds.append(enc)
+        #print(l_idx, enc)
+        if n_ch < n_ch_exps[-1]:  #do not run max pooling on the last encoding/downsampling step
+            enc = MaxPooling3D(pool_size=(2,2,1))(enc)
+    
+    # decoder
+    dec = enc
+    print(n_ch_exps[::-1][1:])
+    decoder_n_chs = n_ch_exps[::-1][1:]
+    for l_idx, n_ch in enumerate(decoder_n_chs):
+        l_idx_rev = len(n_ch_exps) - l_idx - 2  #
+        dec = Conv3DTranspose(filters=2**n_ch, kernel_size=k_size, strides=(2,2,1), activation='relu', padding='same', kernel_initializer=k_init)(dec)
+        dec = concatenate([dec, encodeds[l_idx_rev]], axis=ch_axis)
+        dec = Conv3D(filters=2**n_ch, kernel_size=k_size, activation='relu', padding='same', kernel_initializer=k_init)(dec)
+        dec = Dropout(0.15*l_idx)(dec)
+        dec = Conv3D(filters=2**n_ch, kernel_size=k_size, activation='relu', padding='same', kernel_initializer=k_init)(dec)
+
+    outp = Conv3DTranspose(filters=1, kernel_size=k_size, activation='sigmoid', padding='same', kernel_initializer='glorot_normal')(dec)
+
+    model = Model(inputs=[inp], outputs=[outp])
+    
+    return model
 
 
 ############################################################################################
@@ -373,3 +426,57 @@ def Unet2DBowl(img_width=256, img_height=256):
     model = Model(inputs=[inp], outputs=[outp])
     
     return model
+
+
+
+"""
+Based on the 2D unet implemented in https://www.kaggle.com/dingli/keras-u-net-for-nuclei-segmentation
+"""
+def Unet2D_bowlV2(img_width=256, img_height=256):
+    '''
+    Modified from https://keunwoochoi.wordpress.com/2017/10/11/u-net-on-keras-2-0/
+    '''
+    n_ch_exps = [4, 5, 6, 7, 8, 9]   #the n-th deep channel's exponent i.e. 2**n 16,32,64,128,256
+    k_size = (3, 3)                  #size of filter kernel
+    k_init = 'he_normal'             #kernel initializer
+
+    if K.image_data_format() == 'channels_first':
+        ch_axis = 1
+        input_shape = (3, img_width, img_height)
+    elif K.image_data_format() == 'channels_last':
+        ch_axis = 3
+        input_shape = (img_width, img_height, 1)
+
+    inp = Input(shape=input_shape)
+    encodeds = []
+
+    # encoder
+    enc = inp
+    print(n_ch_exps)
+    for l_idx, n_ch in enumerate(n_ch_exps):
+        enc = Conv2D(filters=2**n_ch, kernel_size=k_size, activation='relu', padding='same', kernel_initializer=k_init)(enc)
+        enc = Dropout(0.1*l_idx,)(enc)
+        enc = Conv2D(filters=2**n_ch, kernel_size=k_size, activation='relu', padding='same', kernel_initializer=k_init)(enc)
+        encodeds.append(enc)
+        #print(l_idx, enc)
+        if n_ch < n_ch_exps[-1]:  #do not run max pooling on the last encoding/downsampling step
+            enc = MaxPooling2D(pool_size=(2,2))(enc)
+    
+    # decoder
+    dec = enc
+    print(n_ch_exps[::-1][1:])
+    decoder_n_chs = n_ch_exps[::-1][1:]
+    for l_idx, n_ch in enumerate(decoder_n_chs):
+        l_idx_rev = len(n_ch_exps) - l_idx - 2  #
+        dec = Conv2DTranspose(filters=2**n_ch, kernel_size=k_size, strides=(2,2), activation='relu', padding='same', kernel_initializer=k_init)(dec)
+        dec = concatenate([dec, encodeds[l_idx_rev]], axis=ch_axis)
+        dec = Conv2D(filters=2**n_ch, kernel_size=k_size, activation='relu', padding='same', kernel_initializer=k_init)(dec)
+        dec = Dropout(0.1*l_idx)(dec)
+        dec = Conv2D(filters=2**n_ch, kernel_size=k_size, activation='relu', padding='same', kernel_initializer=k_init)(dec)
+
+    outp = Conv2DTranspose(filters=1, kernel_size=k_size, activation='sigmoid', padding='same', kernel_initializer='glorot_normal')(dec)
+
+    model = Model(inputs=[inp], outputs=[outp])
+    
+    return model
+
