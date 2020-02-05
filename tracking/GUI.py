@@ -38,7 +38,7 @@ Authors: Valentin Debarnot, Léo Lebrat. 17/07/2019.
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 ratioKept = True # Keep ratio of the images display.
-type_im = np.uint16 # Format wanted by the neural network.
+type_im = np.uint8 # Format wanted by the neural network.
 type_save = np.uint8 # Format of the croped images
 minimalSize = 70 # Minimal number of pixel to say a mask is valid.
 LSTM = False # Use a LSTM network.
@@ -518,7 +518,7 @@ class Widget(QWidget):
 			- Position of barycenter of mask when tracking ended.
 		"""
 		if not os.path.exists(os.path.join(dir_file,'Outputs',file_name)):
-			os.mkdir(os.path.join(dir_file,'Outputs',file_name))
+			os.makedirs(os.path.join(dir_file,'Outputs',file_name))
 		def G1():
 			self.w2.butG1.setStyleSheet("background-color: red")
 			if not os.path.exists(os.path.join(dir_file,'Outputs',file_name,'cells.csv')):
@@ -703,6 +703,7 @@ class Widget(QWidget):
 			else:
 				TIFF_masks = False
 				print("Error - no file found.")
+				return False
 			# load images
 			if TIFF_masks:
 				masks_path = self.masks_path[0][0]
@@ -761,28 +762,58 @@ class Widget(QWidget):
 			from skimage.transform import resize
 			from keras import backend as K
 			from keras.losses import binary_crossentropy
+			import tensorflow as tf
+			import keras
+
 			MODE = "GPU" if "GPU" in [k.device_type for k in device_lib.list_local_devices()] else "CPU"
 			print(MODE)
 			print('########### Computing masks - please wait... ###########')
 
-			def dice_coef_K(y_true, y_pred, smooth=1):
+			# def dice_coef_K(y_true, y_pred, smooth=1):
+			# 	y_true_f = K.flatten(y_true)
+			# 	y_pred_f = K.flatten(y_pred)
+			# 	intersection = K.sum(y_true_f * y_pred_f)
+			# 	return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
+			# def dice_coef_loss_K(y_true, y_pred):
+			# 	return 1-dice_coef_K(y_true, y_pred)
+			self.model = QFileDialog.getOpenFileName(self, "Select h5 file defining the AI model.",os.path.join(os.getcwd(),'Data','Segmentation','Model'),
+			"*.h5 *.hdf5")
+			if len(self.model[0])==0:
+				print("erro - no h5 file found.")
+				return False
+
+			# Custom IoU metric
+			def mean_iou(y_true, y_pred):
+				prec = []
+				for t in np.arange(0.5, 1.0, 0.05):
+					y_pred_ = tf.to_int32(y_pred > t)
+					score, up_opt = tf.metrics.mean_iou(y_true, y_pred_, 2)
+					K.get_session().run(tf.local_variables_initializer())
+					with tf.control_dependencies([up_opt]):
+						score = tf.identity(score)
+					prec.append(score)
+				return K.mean(K.stack(prec), axis=0)
+
+			# Custom loss function
+			def dice_coef(y_true, y_pred):
+				smooth = 1.
 				y_true_f = K.flatten(y_true)
 				y_pred_f = K.flatten(y_pred)
 				intersection = K.sum(y_true_f * y_pred_f)
 				return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
-			def dice_coef_loss_K(y_true, y_pred):
-				return 1-dice_coef_K(y_true, y_pred)
-			self.model = QFileDialog.getOpenFileName(self, "Select h5 file defining the AI model.",os.path.join(os.getcwd(),'..','Data','Segmentation','Model'),
-			"*.h5 *.hdf5")
+
+			def bce_dice_loss(y_true, y_pred):
+				return 0.5 * keras.losses.binary_crossentropy(y_true, y_pred) - dice_coef(y_true, y_pred)
 
 			# Load model and parameters
-			l1 = 1.
-			l2 = -1.
-			loss1 = binary_crossentropy
-			loss2 = dice_coef_loss_K
-			def custom_loss(y_true,y_pred):
-				return l1*loss1(y_true,y_pred)+l2*loss2(y_true,y_pred)
-			net = load_model(self.model[0],custom_objects={'custom_loss':custom_loss})
+			# l1 = 1.
+			# l2 = -1.
+			# loss1 = binary_crossentropy
+			# loss2 = dice_coef_loss_K
+			# def custom_loss(y_true,y_pred):
+			# 	return l1*loss1(y_true,y_pred)+l2*loss2(y_true,y_pred)
+			# # net = load_model(self.model[0],custom_objects={'custom_loss':custom_loss}) #v0
+			net = load_model(self.model[0],custom_objects={'bce_dice_loss': bce_dice_loss, 'mean_iou': mean_iou}) #v1
 			nx = int(net.input.get_shape()[1])
 			ny = int(net.input.get_shape()[2])
 			TIME = int(net.input.get_shape()[3])
@@ -799,16 +830,16 @@ class Widget(QWidget):
 
 			# Make data in time batch
 			nb_serie = int(self.finish+1)//TIME
-			im_batch = np.zeros((nb_serie, nx, ny, TIME), dtype=type_im)
-			masks = np.zeros((nx, ny, self.finish+1), dtype=type_im)      
+			im_batch = np.zeros((nb_serie, nx, ny, TIME), dtype=np.float32)
+			masks = np.zeros((nx, ny, self.finish+1), dtype=np.float32)
 			for i in range(nb_serie):
-				tmp = self.im_nn[i*TIME:(i+1)*TIME].copy()
+				tmp = np.array(self.im_nn[i*TIME:(i+1)*TIME].copy(),dtype=np.float32)
 				for t in range(TIME):
 					im_batch[i,:,:,t] = resize(tmp[t], (nx,ny), mode='constant', preserve_range=True)
-				im_batch[i] = np.array(np.iinfo(type_im).max*(np.array(im_batch[i],dtype=np.float64)-np.min(im_batch[i]))/(np.max(im_batch[i])-np.min(im_batch[i])),dtype=type_im)
+				# im_batch[i] = np.array(np.iinfo(type_im).max*(np.array(im_batch[i],dtype=np.float64)-np.min(im_batch[i]))/(np.max(im_batch[i])-np.min(im_batch[i])),dtype=type_im)
 			# if nb_serie >0:
 			# 	im_batch = np.iinfo(type_im).max*(im_batch- np.min(im_batch))/(np.max(im_batch)-np.min(im_batch))
-			im_batch = np.expand_dims(np.array(im_batch, dtype=type_im),4)
+			im_batch = np.expand_dims(np.array(im_batch, dtype=np.float32),4)
 			if LSTM:
 				im_batch = np.rollaxis(im_batch,3,1)
 
@@ -826,15 +857,15 @@ class Widget(QWidget):
 				else:
 					for t in range(TIME):
 						# masks[i*TIME+t] = np.squeeze(self.im[TIME*i+t])
-						masks[i*TIME+t] = resize(masks_[:,:,t],(self.im.shape[1],self.im.shape[2]), mode='constant', preserve_range=True)	
+						masks[i*TIME+t] = resize(masks_[:,:,t],(self.im.shape[1],self.im.shape[2]), mode='constant', preserve_range=True)
 
 			# Compute mask for the remaining images 
 			if self.finish != TIME*nb_serie:
-				tmp = self.im_nn[self.finish+1-TIME:].copy()
+				tmp = np.array(self.im_nn[self.finish+1-TIME:].copy(),dtype=np.float32)
 				im_tmp = np.zeros((1,nx,ny,TIME,1))
 				for t in range(TIME):
 					im_tmp[0,:,:,t,0] = resize(tmp[t], (nx,ny), mode='constant', preserve_range=True)
-				im_tmp[0] = np.array(np.iinfo(type_im).max*(np.array(im_tmp[0],dtype=np.float64)-np.min(im_tmp[0]))/(np.max(im_tmp[0])-np.min(im_tmp[0])),dtype=type_im)
+				# im_tmp[0] = np.array(np.iinfo(type_im).max*(np.array(im_tmp[0],dtype=np.float64)-np.min(im_tmp[0]))/(np.max(im_tmp[0])-np.min(im_tmp[0])),dtype=type_im)
 				im_tmp = np.array(im_tmp,dtype=np.float32)/np.iinfo(type_im).max
 				tmp = np.array(np.squeeze(net.predict(im_tmp)),dtype=np.float32)
 				for t in range((self.finish+1-nb_serie*TIME)):
@@ -913,11 +944,11 @@ class Widget(QWidget):
 		self.roi.setZValue(10)  # make sure ROI is drawn above image
 
 		# Contrast/color control
-		hist = pg.HistogramLUTItem(fillHistogram=False)
-		hist.setImageItem(self.img)
-		self.win.addItem(hist)
+		# hist = pg.HistogramLUTItem(fillHistogram=False)
+		# hist.setImageItem(self.img)
+		# self.win.addItem(hist)
 		self.img.setImage(np.rot90(self.data,3))
-		hist.setLevels(self.data.min(), self.data.max())	
+		# hist.setLevels(self.data.min(), self.data.max())	
 		p1.setAspectLocked()
 		p1.autoRange()  
 

@@ -98,8 +98,8 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 	im_crop = {} # crop of masks
 	mask_crop = {} # crop of masks
 	im_crop2 = {} # crop of masks is second channel of interest
-	# im_out = np.repeat(np.expand_dims(im.copy(),3),3,3) # Need to turn into rgb image, HistogramLUTItem doesn't support rgb
-	im_out = np.zeros_like(im)
+	im_out = np.repeat(np.expand_dims(im.copy(),3),3,3) # Need to turn into rgb image, HistogramLUTItem doesn't support rgb
+	# im_out = np.zeros_like(im)
 	min_x = np.zeros(finish-imageStart+1)
 	max_x = np.zeros(finish-imageStart+1)
 	min_y = np.zeros(finish-imageStart+1)
@@ -108,7 +108,15 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 	localCells,compo = find_connected_components(masks[crtImage],minimalSize) # Detect connected components
 	indexMin = argmin_first(localCells,barycenter) # Compute argmin CF
 	maskFinal[np.where(compo==localCells[indexMin][0])] = 1 # take only mask of interest
-	volume = np.sum(maskFinal)
+
+	# mask_ = np.array(255*(maskFinal>1e-7),dtype=np.uint8)
+	# # Erode
+	# kernel = np.ones((5,5), np.uint8) 
+	# mask_erosion = cv2.erode(mask_, kernel, iterations=1) 
+	# # Dilate
+	# kernel = np.ones((4,4), np.uint8) 
+	# maskFinal = cv2.dilate(mask_erosion, kernel, iterations=1) 
+	# volume = np.sum(maskFinal)
 	
 	# Select region of interest to save crops
 	delta = 2
@@ -118,8 +126,8 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 	min_x[cpt_im] = np.max((np.min(r[0])-delta,0))
 	min_y[cpt_im] = np.max((np.min(r[1])-delta,0))
 
-	# im_out[crtImage] = draw_border(maskFinal,im[crtImage].astype(np.uint8)) # HistogramLUTItem doesn't support rgb
-	im_out[crtImage] = np.dot(draw_border(maskFinal,im[crtImage].astype(np.uint8)), [0.299, 0.587, 0.144])
+	im_out[crtImage] = draw_border(maskFinal,im[crtImage].astype(np.uint8)) # HistogramLUTItem doesn't support rgb
+	# im_out[crtImage] = np.dot(draw_border(maskFinal,im[crtImage].astype(np.uint8)), [0.299, 0.587, 0.144])
 	maskFinal_[crtImage] = maskFinal
 	# Repeat the operation for each time step
 	# progressbar.setValue(crtImage)
@@ -162,6 +170,15 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 		localCells,compo = find_connected_components(masks[crtImage],minimalSize) # Detect connected components
 		indexMin, c = argmin_CF(localCells,barycenter,volume,gamma) # Compute argmin CF
 		maskFinal[np.where(compo==localCells[indexMin][0])] = 1 # take only mask of interest
+
+		# mask_ = np.array(255*(maskFinal>1e-7),dtype=np.uint8)
+		# # Erode
+		# kernel = np.ones((5,5), np.uint8) 
+		# mask_erosion = cv2.erode(mask_, kernel, iterations=1) 
+		# # Dilate
+		# kernel = np.ones((4,4), np.uint8) 
+		# maskFinal = cv2.dilate(mask_erosion, kernel, iterations=1) 
+
 		volume = np.sum(maskFinal)
 		# cost[crtImage-1]=c
 
@@ -173,8 +190,8 @@ def extractMaskFromPoint(masks, im, im_channel, imageStart, pos, finish, progres
 		min_x[cpt_im] = np.max((np.min(r[0])-delta,0))
 		min_y[cpt_im] = np.max((np.min(r[1])-delta,0))
 
-		# im_out[crtImage] = draw_border(maskFinal,im[crtImage].astype(np.uint8)) # HistogramLUTItem doesn't support rgb
-		im_out[crtImage] = np.dot(draw_border(maskFinal,im[crtImage].astype(np.uint8)), [0.299, 0.587, 0.144])
+		im_out[crtImage] = draw_border(maskFinal,im[crtImage].astype(np.uint8)) # HistogramLUTItem doesn't support rgb
+		# im_out[crtImage] = np.dot(draw_border(maskFinal,im[crtImage].astype(np.uint8)), [0.299, 0.587, 0.144])
 		maskFinal_[crtImage] = maskFinal
 
 		add_x = max_x_axis - (max_x[cpt_im]-min_x[cpt_im])

@@ -11,7 +11,7 @@ import utils
 ## Parameters
 name = 'nn_demo'
 batch_size = 2
-type_im = np.uint16
+type_im = np.uint8
 type_tf = np.float32
 
 thresh = 0.2
@@ -31,8 +31,8 @@ print(MODE)
 
 name_save_list = ['nn_XP_Unet3D','nn_XP_Unet2D','nn_XP_LSTM','nn_Unet2D_bowl_crop']
 model_name_list = ['Unet3D', 'Unet2D', 'LSTM','Unet2D_bowl_crop']
-# name_save_list = ['nn_Unet2D_bowl_crop']
-# model_name_list = ['Unet2D_bowl_crop']
+name_save_list = ['nn_XP_Unet3D']
+model_name_list = ['Unet3D']
 
 for i in range(len(model_name_list)):
     model_name = model_name_list[i]

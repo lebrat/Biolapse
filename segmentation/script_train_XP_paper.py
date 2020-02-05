@@ -112,8 +112,8 @@ for i in range(len(model_name_list)):
         code_im1='images',code_im2='masks')
         X_train = np.expand_dims(np.array(X_train, dtype=np.float32),4)
         Y_train = np.expand_dims(np.array(Y_train, dtype=np.float32),4)
-        X_train[t] = X_train/255
-        Y_train[t] = Y_train/255
+        X_train = X_train/255
+        Y_train = Y_train/255
         # for t in range(X_train.shape[0]):
         #     X_train[t] = X_train[t]/np.max(X_train[t])
         #     Y_train[t] = Y_train[t]/np.max(Y_train[t])
