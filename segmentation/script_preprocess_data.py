@@ -8,7 +8,7 @@ This script is a demo of the kind of preprocessing that can be used in this proj
 """
 
 ## Parameters
-type_im = np.uint16
+type_im = np.uint8
 nx = ny = 256
 
 ## Tif to png
@@ -35,7 +35,7 @@ for dirnames in  os.listdir(path_train_im):
     path_masks = os.path.join(path_train_mask,dirnames,'*.png')
     path_save = os.path.join(path_train_save,dirnames)
     data_loader.augmentation_png(path_imgs,path_masks,path_save, original=True, oneOfTwo=True, reverse=True, reverseOneOfTwo=True,
-    rotation1=30, rotation2=150,rotation3=240,rotation4=90,rotation5=290,rotation6=120, rotation7=330)
+    rotation1=0, rotation2=180,rotation3=0,rotation4=90,rotation5=270,rotation6=0, rotation7=0)
 path_test_save = '../Data/Segmentation/Test3D/augmentation'
 path_test_im = '../Data/Acquisitions/png/Test/images/'
 path_test_mask = '../Data/Acquisitions/png/Test/masks/'
@@ -43,8 +43,8 @@ for dirnames in  os.listdir(path_test_im):
     path_imgs = os.path.join(path_test_im,dirnames,'*.png')
     path_masks = os.path.join(path_test_mask,dirnames,'*.png')
     path_save = os.path.join(path_test_save,dirnames)
-    data_loader.augmentation_png(path_imgs,path_masks,path_save, original=True, oneOfTwo=True, reverse=True, reverseOneOfTwo=True,
-    rotation1=30, rotation2=150,rotation3=240,rotation4=90,rotation5=290,rotation6=120, rotation7=330)
+    data_loader.augmentation_png(path_imgs,path_masks,path_save, original=True, oneOfTwo=False, reverse=True, reverseOneOfTwo=False,
+    rotation1=0, rotation2=180,rotation3=0,rotation4=90,rotation5=0,rotation6=0, rotation7=0)
 
 
 

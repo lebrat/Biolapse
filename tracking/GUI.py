@@ -13,7 +13,7 @@ import cv2
 import os
 import shutil
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QSizePolicy, QSlider, QSpacerItem, \
-	QVBoxLayout, QWidget, QFileDialog, QPushButton
+	QVBoxLayout, QWidget, QFileDialog, QPushButton, QInputDialog
 
 from tracking import extractMaskFromPoint
 
@@ -42,6 +42,7 @@ type_im = np.uint8 # Format wanted by the neural network.
 type_save = np.uint8 # Format of the croped images
 minimalSize = 70 # Minimal number of pixel to say a mask is valid.
 LSTM = False # Use a LSTM network.
+normalize=False
 
 
 
@@ -185,6 +186,9 @@ class InterfaceManagerButton(QWidget):
 	isChannel  = pyqtSignal()
 	isTrack = pyqtSignal()
 	isTrackEnd = pyqtSignal()
+	# iscomputeSpeed = pyqtSignal()
+	# iscomputeVolume = pyqtSignal()
+	# iscomputeStep = pyqtSignal()
 	def __init__(self, parent=None):
 		super(InterfaceManagerButton, self).__init__(parent=parent)
 		self.verticalLayout = QVBoxLayout(self)
@@ -211,7 +215,17 @@ class InterfaceManagerButton(QWidget):
 		self.butTrackEnd.clicked.connect(self.trackEndImage)
 		self.horizontalLayout.addWidget(self.butTrackEnd)
 
-		
+		# self.butcomputeSpeed = QPushButton("Maximum speed")
+		# self.butcomputeSpeed.clicked.connect(self.computeSpeed)
+		# self.horizontalLayout.addWidget(self.butcomputeSpeed)
+
+		# self.butcomputeVolume = QPushButton("Maximum volume increase")
+		# self.butcomputeVolume.clicked.connect(self.computeVolume)
+		# self.horizontalLayout.addWidget(self.butcomputeVolume)
+
+		# self.butcomputeStep = QPushButton("step")
+		# self.butcomputeStep.clicked.connect(self.computeStep)
+		# self.horizontalLayout.addWidget(self.butcomputeStep)
 	
 	## click actions emitting signals
 	def quitImage(self):
@@ -226,6 +240,15 @@ class InterfaceManagerButton(QWidget):
 	def trackEndImage(self):
 		print("End saving crop")
 		self.isTrackEnd.emit()
+	# def computeSpeed(self):
+	# 	print("")
+	# 	self.iscomputeSpeed.emit()
+	# def computeVolume(self):
+	# 	print("")
+	# 	self.iscomputeVolume.emit()
+	# def computeStep(self):
+	# 	print("")
+	# 	self.iscomputeStep.emit()
 
 """
 Implement bottom buttons.
@@ -365,8 +388,8 @@ class Widget(QWidget):
 			imgs = self.fold[0][0]
 			print("Warning: only one tiff can be process.")
 			tmp = np.array(imageio.mimread(imgs,memtest=False))
-			# from scipy.misc import bytescale
-			tmp = bytescale(tmp)
+			if tmp.dtype!='uint8':
+				tmp = bytescale(tmp)			
 			self.im = np.squeeze(np.array(tmp,dtype=np.uint8))
 			self.im_nn = np.squeeze(np.array(tmp,dtype=type_im))
 			self.start = 0
@@ -377,8 +400,8 @@ class Widget(QWidget):
 			pictList = self.fold[0]
 			path_fold = self.fold[0]
 			tmp = np.array(imageio.imread(pictList[0]))
-			# from scipy.misc import bytescale
-			tmp = bytescale(tmp)
+			if tmp.dtype!='uint8':
+				tmp = bytescale(tmp)			
 			self.im = np.array(tmp,dtype=np.uint8)
 			self.im = np.zeros((len(pictList),self.im.shape[0],self.im.shape[1]))
 			self.im_nn = np.zeros((len(pictList),self.im.shape[1],self.im.shape[2]),dtype=type_im)
@@ -405,7 +428,7 @@ class Widget(QWidget):
 		self.w1 = Slider(self.start,self.finish)
 		self.horizontalLayout.addWidget(self.w1)
 		self.win = pg.GraphicsWindow(title="Basic plotting examples")
-		p1 = self.win.addPlot()
+		p1 = self.win.addPlot(row=1,col=1,rowspan=2)
 		self.horizontalLayout.addWidget(self.win)
 		self.w2 = BottomBut()
 		self.horizontalLayout.addWidget(self.w2)
@@ -413,6 +436,9 @@ class Widget(QWidget):
 		self.progress.setGeometry(0, 0, 300, 25)
 		self.progress.setMaximum(self.finish)
 		self.horizontalLayout.addWidget(self.progress)
+		self.speed=60
+		self.volume=0.5
+		self.step=20
 		
 		def quitProcedure():
 			sys.exit()
@@ -460,7 +486,9 @@ class Widget(QWidget):
 				self.secondChannel = True
 			else:
 				raise ValueError('Channel not with same shape as original images.')
-			
+
+
+
 		def shootingProcedure():
 			if self.plot_mask and not(self.Shooted):
 				self.prev_shoot = -1
@@ -477,8 +505,20 @@ class Widget(QWidget):
 					self.im, self.currentBar, self.mask_crop, self.im_focus, self.im_channel_focus, _ = extractMaskFromPoint(self.masks,self.im,self.im_channel,0,middle,self.finish,self.progress, minimalSize=minimalSize)
 				else:
 					self.im, self.currentBar, self.mask_crop, self.im_focus, _, _ = extractMaskFromPoint(self.masks,self.im,np.zeros(1),0,middle,self.finish,self.progress, minimalSize=minimalSize)
-				updateImage()
 				print('Shooting mode, identify phases.')
+				self.p3 = self.win.addPlot(row=2,col=2,rowspan=1)
+				self.img_crop = pg.ImageItem(None, border="w")
+				self.p3.addItem(self.img_crop)
+				self.win.show()
+				p1.setAspectLocked(ratioKept)
+				p1.autoRange()
+				self.img_crop.setImage(np.rot90(self.im_focus[self.w1.x],3))
+				self.p3.setAspectLocked(ratioKept)
+				self.p3.autoRange()
+				self.p3.setAspectLocked()
+				self.p3.autoRange()
+				updateImage()
+
 			elif not(self.plot_mask):
 				print('Error: load or compute mask first.')
 				return 0
@@ -549,15 +589,17 @@ class Widget(QWidget):
 					os.makedirs(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID)))	
 				for k in range(self.prev_shoot,self.w1.x+1):
 					tmp = np.array(self.im_focus[k]*self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					if normalize:
+						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 					tmp = np.array(self.mask_crop[k],dtype=np.float32)
 					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 					if self.secondChannel:
 						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
+						if normalize:
+							tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 				self.prev_shoot = self.w1.x
 			else:
 				print('Not in shooting mode.')
@@ -580,15 +622,17 @@ class Widget(QWidget):
 					os.makedirs(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID)))	
 				for k in range(self.prev_shoot+1,self.w1.x+1):
 					tmp = np.array(self.im_focus[k]*self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					if normalize:
+						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 					tmp = np.array(self.mask_crop[k],dtype=np.float32)
 					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 					if self.secondChannel:
 						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
+						if normalize:
+							tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 				self.prev_shoot = self.w1.x
 			else:
 				print('Not in shooting mode.')
@@ -611,15 +655,17 @@ class Widget(QWidget):
 					os.makedirs(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID)))	
 				for k in range(self.prev_shoot+1,self.w1.x+1):
 					tmp = np.array(self.im_focus[k]*self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					if normalize:
+						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 					tmp = np.array(self.mask_crop[k],dtype=np.float32)
 					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 					if self.secondChannel:
 						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
+						if normalize:
+							tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 				self.prev_shoot = self.w1.x
 			else:
 				print('Not in shooting mode.')
@@ -643,15 +689,17 @@ class Widget(QWidget):
 					os.makedirs(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID)))	
 				for k in range(self.prev_shoot+1,self.w1.x+1):
 					tmp = np.array(self.im_focus[k]*self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					if normalize:
+						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 					tmp = np.array(self.mask_crop[k],dtype=np.float32)
 					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 					if self.secondChannel:
 						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
+						if normalize:
+							tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 				self.prev_shoot = self.w1.x
 			else:
 				print('Not in shooting mode.')
@@ -671,19 +719,30 @@ class Widget(QWidget):
 					os.makedirs(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID)))	
 				for k in range(self.prev_shoot+1,self.w1.x+1):
 					tmp = np.array(self.im_focus[k]*self.mask_crop[k],dtype=np.float32)
-					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					if normalize:
+						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 					tmp = np.array(self.mask_crop[k],dtype=np.float32)
 					tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),tmp)
+					imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom_mask',str(self.shootID),str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 					if self.secondChannel:
 						tmp = np.array(self.im_channel_focus[k],dtype=np.float32)
-						tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
-						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),tmp)
+						if normalize:
+							tmp = np.array(np.iinfo(type_save).max*(tmp-tmp.min())/(tmp.max()-tmp.min()),dtype=type_save)
+						imageio.imsave(os.path.join(dir_file,'Outputs',file_name,'zoom',str(self.shootID),'channel2_'+str(k).zfill(10)+'.png'),np.array(tmp,dtype=np.uint8))
 				self.prev_shoot = self.w1.x
 			else:
 				print('Not in shooting mode.')
 			f.close()
+
+
+		# def Speed():
+		# 	self.speed = self.getInt('Maximum speed in one time step (in pixels)')
+		# def Volume():
+		# 	tmp = self.getInt('Maximum volume increase (in %)')
+		# 	self.volume = float(tmp)/100.
+		# def Step():
+		# 	self.step = self.getInt('Time between two detection of cells.')
 
 		"""
 		Load masks from tiff or png file. User should select a tiff image containing a time sequence of mask, or several png files refered as masks.
@@ -725,7 +784,7 @@ class Widget(QWidget):
 			if loadsuccesfull:
 				if self.plot_mask != True:
 					self.plot_mask = True
-					self.p2 = self.win.addPlot(colspan=2)
+					self.p2 = self.win.addPlot(row=1,col=2,rowspan=1)
 					self.img_m = pg.ImageItem(None, border="w")
 					self.p2.addItem(self.img_m)  
 					self.maskLoaded = True
@@ -939,6 +998,9 @@ class Widget(QWidget):
 			self.img.setImage(np.rot90(self.data,3))
 			if self.maskLoaded:
 				self.img_m.setImage(np.rot90(self.masks[self.w1.x],3))
+			if self.Shooted:
+				# import ipdb.ipdb.set_trace()
+				self.img_crop.setImage(np.rot90(self.im_focus[self.w1.x],3))
 		self.w1.valueChangedX.connect(updateImage)
 		p1.addItem(self.roi)
 		self.roi.setZValue(10)  # make sure ROI is drawn above image
@@ -989,6 +1051,15 @@ class Widget(QWidget):
 		self.w3.isChannel.connect(newChannelProcedure)
 		self.w3.isTrack.connect(trackingProcedure)
 		self.w3.isTrackEnd.connect(endTrackingProcedure)
+		# self.w3.iscomputeSpeed.connect(Speed)
+		# self.w3.iscomputeVolume.connect(Volume)
+		# self.w3.iscomputeStep.connect(Step)
+	def getInt(self,message):
+		d,okPressed=QInputDialog.getInt(self,message,'Value',30,1,1000,10)
+		if okPressed:
+			print(message)
+			print('Value: '+str(int(d)))
+		return int(d)
 
 
 
@@ -1057,6 +1128,20 @@ def bytescale(data, cmin=None, cmax=None, high=255, low=0):
     bytedata[bytedata > high] = high
     bytedata[bytedata < 0] = 0
     return np.array(bytedata,dtype=np.uint8) + np.array(low,dtype=np.uint8)
+
+
+
+class SecondWindow(QtGui.QWidget):
+    def __init__(self,parent):
+        QtGui.QWidget.__init__(self,parent)
+
+        self.button=QtGui.QPushButton("my button !")
+
+        layout=QtGui.QHBoxLayout()
+        layout.addWidget(self.button)
+        self.setLayout(layout)
+
+        self.show()
 
 # Interpret image data as row-major instead of col-major
 # pg.setConfigOptions(imageAxisOrder='row-major')

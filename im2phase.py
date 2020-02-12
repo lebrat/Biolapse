@@ -30,8 +30,6 @@ INPUT:
 
 
 def im2phase(im_,im_channel,masks,max_speed_disp=20,max_volume_var=0.3,minimalSize=100,nx_crop=128,ny_crop=128,save_out=True,step=20):
-
-
     mask_ = np.array(255*(masks>1e-7),dtype=np.uint8)
     mask_final = np.zeros_like(mask_)
     # import ipdb; ipdb.set_trace()

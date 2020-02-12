@@ -7,7 +7,7 @@ import glob
 import os
 import cv2
 import operator
-
+import matplotlib.pyplot as plt
 
 """
 Convert a rgb image to grayscale.
@@ -211,37 +211,94 @@ class Net(nn.Module):
         return num_features
 
 
-def train(model, device, train_loader, test_loader, optimizer, epoch, nit=100, nbatch=20):
+
+"""
+Apply blur operator onto points at position on the grid. 
+Operator is assumed to act separately on two parts of the image: im[:n/2,:] and im[n/2:,:].
+Image makes operator always identifiable: minimum 2 sources id different part of the image.
+"""
+class CropGenertor(torch.utils.data.Dataset):
+    def __init__(self, im, feature):
+        self.L=feature.shape[0]
+        self.feature=feature
+        self.im=im
+
+    def __len__(self):
+        return self.L
+
+    def __getitem__(self, i):
+        return np.expand_dims(self.im[i],0), self.feature[i]
+
+
+from torch.autograd import Variable
+def train(model, device, train_loader, test_loader, optimizer, epoch, nbatch=20):
     model.train()
+    use_cuda=torch.cuda.is_available()
     
-    data, target = train_loader
-    data_test, target_test = test_loader
-    nbImages = data.shape[0]
-    for batch_idx in range(nit):
-        randi = np.random.randint(0,nbImages,size=nbatch)
-        dataloc, targetloc = data[randi,:,:,:] ,target[randi]
-        dataloc.to(device)
-        targetloc.to(device)
+    # data, target = train_loader
+    # data_test, target_test = test_loader
+    # nbImages = data.shape[0]
+
+    cpt=0
+    cum_loss_train=0
+    for im, feat in train_loader:
+        if use_cuda:
+            im = Variable(im).type(torch.float32).cuda()
+        else:
+            im = Variable(im).type(torch.float32)
+
+    # for batch_idx in range(nit):
+        # randi = np.random.randint(0,nbImages,size=nbatch)
+        # dataloc, targetloc = data[randi,:,:,:] ,target[randi]
+        # dataloc.to(device)
+        # targetloc.to(device)
 
         optimizer.zero_grad()
-        output = model(dataloc)
-        loss = nn.BCELoss()(output,targetloc)
+        # output = model(dataloc)
+        output = model(im)
+        if use_cuda:
+            loss = nn.BCELoss()(output,Variable(feat.float()).cuda())
+        else:
+            loss = nn.BCELoss()(output,Variable(feat.float()))
+        # loss = nn.BCELoss()(output,targetloc)
+        # loss = nn.CrossEntropyLoss().cuda()(output,targetloc)
         loss.backward()
         optimizer.step()
-        if batch_idx % 50 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx, nit,
-                100. * batch_idx / nit, loss.item()))
+        cum_loss_train+=loss.item()
+        if cpt % 50 == 0:
+            print('Train Epoch: {} [{}]\tLoss: {:.6f}'.format(
+                epoch, cpt,loss.item()))
+        cpt+=1
 
-    loss_train = loss.item()
+    loss_train = cum_loss_train/cpt
     # # Test
-    randi = np.random.randint(0,data_test.shape[0],size=nbatch)
-    dataloc_test, targetloc_test = data_test[randi,:], target_test[randi,:]
-    dataloc_test.to(device)
-    targetloc_test.to(device)
-    output = model(dataloc_test)
-    loss_test = nn.BCELoss()(output,targetloc_test)
-    print('Test loss: {:.6f}'.format(loss_test.item()))
+    # randi = np.random.randint(0,data_test.shape[0],size=nbatch)
+    # dataloc_test, targetloc_test = data_test[randi,:], target_test[randi,:]
+    # dataloc_test.to(device)
+    # targetloc_test.to(device)
+    # output = model(dataloc_test)
+    # loss_test = nn.BCELoss()(output,targetloc_test)
+
+
+    cpt=0
+    cum_loss_test=0
+    for image_test, label_test in test_loader:
+        if use_cuda:
+            image_test = Variable(image_test).type(torch.float32).cuda()
+        else:
+            image_test = Variable(image_test).type(torch.float32)
+        output = model(image_test)
+        if use_cuda:
+            loss = nn.BCELoss()(output, Variable(label_test.float()).cuda())
+        else:
+            loss = nn.BCELoss()(output, Variable(label_test.float()))
+        cum_loss_test += loss.item()
+        cpt+=1
+    loss_test=cum_loss_test/cpt
+
+
+    # loss_test = nn.CrossEntropyLoss().cuda()(output,targetloc_test)
+    print('Test loss: {:.6f}'.format(loss_test))
     return loss_train, loss_test
 
 
@@ -357,3 +414,66 @@ def find_connected_components(masks,minimalSize):
 		else:
 			localCells += [[chunckNo,(np.where(compo==chunckNo)[0].mean(),np.where(compo==chunckNo)[1].mean()),len(np.where(compo==chunckNo)[0])]]
 	return localCells, compo
+
+
+
+"""
+Display train and testing dataset for classification
+"""
+def display_classification(im,feature_pred=[],feature_true=[],leg=[],save=True,name='visu',L=200):
+    if len(feature_true)!=0:
+        l=feature_true.shape[1]
+    elif len(feature_pred)!=0:
+        l=feature_pred.shape[1]
+    else:
+        l=-1
+    if len(leg)!=l:
+        leg=[]
+    K=np.minimum(im.shape[0],9)
+    plt.figure(1)
+    for k in range(K):
+        plt.subplot(331+k)
+        plt.imshow(im[k])
+        if len(feature_true)==0 and len(feature_pred)!=0:
+            if len(leg)!=0:
+                plt.title('Image {0} -- Prediction: {1}'.format(k,(leg[np.where(feature_pred[k])[0][0]])))
+            else:
+                plt.title('Image {0} -- Prediction: {1}'.format(k,(np.where(feature_pred[k])[0][0])))
+        if len(feature_true)!=0 and len(feature_pred)==0:
+            if len(leg)!=0:
+                plt.title('Image {0} -- True: {1}'.format(k,leg[np.where(feature_true[k])[0][0]]))
+            else:
+                plt.title('Image {0} -- True: {1}'.format(k,(np.where(feature_true[k])[0][0])))
+        if len(feature_true)!=0 and len(feature_pred)!=0:
+            if len(leg)!=0:
+                plt.title('Image {0} -- Prediction: {1} -- True: {2}'.format(k,(leg[np.where(feature_pred[k])[0][0]]),(leg[np.where(feature_true[k])[0][0]])))
+            else:
+                plt.title('Image {0} -- Prediction: {1} -- True: {2}'.format(k,(np.where(feature_pred[k])[0][0]),(np.where(feature_true[k])[0][0])))
+        if len(feature_true)==0 and len(feature_pred)==0:
+            raise ValueError('No feature found.')
+
+    if save:
+        if not os.path.exists(os.path.join('..','Data','Classification',name)):
+            os.makedirs(os.path.join('..','Data','Classification',name))
+        
+        for k in range(np.minimum(im.shape[0],L)):
+            plt.figure(2)
+            plt.imshow(im[k])
+            if len(feature_true)==0 and len(feature_pred)!=0:
+                if len(leg)!=0:
+                    plt.title('Image {0} -- Prediction: {1}'.format(k,(leg[np.where(feature_pred[k])[0][0]])))
+                else:
+                    plt.title('Image {0} -- Prediction: {1}'.format(k,(np.where(feature_pred[k])[0][0])))
+            if len(feature_true)!=0 and len(feature_pred)==0:
+                if len(leg)!=0:
+                    plt.title('Image {0} -- True: {1}'.format(k,(leg[np.where(feature_true[k])[0][0]])))
+                else:
+                    plt.title('Image {0} -- True: {1}'.format(k,(np.where(feature_true[k])[0][0])))
+            if len(feature_true)!=0 and len(feature_pred)!=0:
+                if len(leg)!=0:
+                    plt.title('Image {0} -- Prediction: {1} -- True: {2}'.format(k,(leg[np.where(feature_pred[k])[0][0]]),(leg[np.where(feature_true[k])[0][0]])))
+                else:
+                    plt.title('Image {0} -- Prediction: {1} -- True: {2}'.format(k,(np.where(feature_pred[k])[0][0]),(np.where(feature_true[k])[0][0])))
+            if len(feature_true)==0 and len(feature_pred)==0:
+                raise ValueError('No feature found.')
+            plt.savefig(os.path.join('..','Data','Classification',name,'im_'+str(k).zfill(5)+'.png'))

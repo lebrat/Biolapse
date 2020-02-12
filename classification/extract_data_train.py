@@ -8,8 +8,7 @@ from utils import get_labels, stringSplitByNumbers
 """
 Merge data extracted by Biolapse interface and save them into one unique folder to train a neural network to predict phases.
 """
-
-def extract_data(path_to_crop,nx,ny,nclass,seq_test=0,save_png=True):
+def extract_data(path_to_crop,nx,ny,nclass,seq_test=0,save_png=True,normalize=False):
     if not os.path.exists(os.path.join('..','Data','Classification','Train')):
         os.makedirs(os.path.join('..','Data','Classification','Train'))	
     if not os.path.exists(os.path.join('..','Data','Classification','Test')):
@@ -52,7 +51,10 @@ def extract_data(path_to_crop,nx,ny,nclass,seq_test=0,save_png=True):
                 cpt+=1
             id_img.append(id_img_)
 
-        nb_test = len(labels[seq_test])
+        if fol == os.listdir(os.path.join(path_to_crop))[0]:
+            nb_test = len(labels[seq_test])
+        else:
+            nb_test=0
         im_train = np.zeros((n_im-nb_test,nx,ny))
         im_test = np.zeros((nb_test,nx,ny))
         feature_train = np.zeros((n_im-nb_test,nclass))
@@ -65,21 +67,24 @@ def extract_data(path_to_crop,nx,ny,nclass,seq_test=0,save_png=True):
             im_ = all_img[int(idx_arr[k])]
             im_tmp = np.array(resize(imageio.imread(im_),
                                 (nx, ny)), dtype=np.float32)
-            im_tmp = np.array(
-                ((im_tmp-im_tmp.min())/(im_tmp.max()-im_tmp.min()))*mask_tmp, dtype=np.float32)
-            if (idreverse[k,0]== seq_test):
+            if normalize:
+                im_tmp = np.array(
+                    ((im_tmp-im_tmp.min())/(im_tmp.max()-im_tmp.min()))*mask_tmp, dtype=np.float32)
+            else:
+                im_tmp=im_tmp*mask_tmp
+            if (idreverse[k,0]== seq_test) and fol == os.listdir(os.path.join(path_to_crop))[0]:
                 im_test[cpt_test] = im_tmp
                 feature_test[cpt_test] = labels_arr[k]
                 if save_png:
-                    im_tmp = np.array((im_tmp-np.max(im_tmp))/(np.max(im_tmp)-np.min(im_tmp)),dtype=np.uint8)
-                    imageio.imsave(os.path.join('..','Data','Classification','Test',str(cpt_test).zfill(5)+'.png'),im_tmp)
+                    tmp = np.array((im_tmp-np.max(im_tmp))/(np.max(im_tmp)-np.min(im_tmp)),dtype=np.uint8)
+                    imageio.imsave(os.path.join('..','Data','Classification','Test',str(cpt_test).zfill(5)+'.png'),tmp)
                 cpt_test += 1
             else:
                 im_train[cpt_train] = im_tmp
                 feature_train[cpt_train] = labels_arr[k]
                 if save_png:
-                    im_tmp = np.array((im_tmp-np.max(im_tmp))/(np.max(im_tmp)-np.min(im_tmp)),dtype=np.uint8)
-                    imageio.imsave(os.path.join('..','Data','Classification','Train',str(cpt_train).zfill(5)+'.png'),im_tmp)
+                    tmp = np.array((im_tmp-np.max(im_tmp))/(np.max(im_tmp)-np.min(im_tmp)),dtype=np.uint8)
+                    imageio.imsave(os.path.join('..','Data','Classification','Train',str(cpt_train).zfill(5)+'.png'),tmp)
                 cpt_train += 1
         im_train_list.append(im_train)
         im_test_list.append(im_test)

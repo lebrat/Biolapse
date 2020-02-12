@@ -51,7 +51,7 @@ lr = 1e-1
 momentum = 0.8
 decay = 1e-6
 steps_per_epoch = 5 # number of time the data are used
-batch_size = 4
+batch_size = 2
 type_im = np.uint8
 nx = ny = 128
 TIME = 10
@@ -65,8 +65,8 @@ name_save_list = ['nn_XP_Unet3D','nn_XP_Unet3D_crop','nn_XP_LSTM','nn_Unet2D_bow
 model_name_list = ['Unet3D','Unet3Dcrop', 'LSTM','Unet2D_bowl_crop']
 # name_save_list = ['nn_Unet2D_bowl_crop']
 # model_name_list = ['Unet2D_bowl_crop']
-name_save_list = ['nn_XP_Unet3D','nn_XP_Unet3D_crop']
-model_name_list = ['Unet3D','Unet3Dcrop']
+name_save_list = ['nn_XP_Unet3D_crop']
+model_name_list = ['Unet3Dcrop']
 tim = []
 for i in range(len(model_name_list)):
     model_name = model_name_list[i]
@@ -248,7 +248,7 @@ for i in range(len(model_name_list)):
 
     ## Training
     t_train = time.time()
-    net = train.training_generator(net,generator_train,epochs=epoch,steps=steps_per_epoch*len(X_train)/(batch_size),
+    net = train.training_generator(net,generator_train,epochs=epoch,steps=int(np.round(steps_per_epoch*len(X_train)/(batch_size))),
         save_name=name_save,generator_validation=generator_test,step_decay=step_decay)
     t_train = time.time()-t_train
     print("Training time: {0}".format(t_train))
